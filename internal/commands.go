@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/willgeorge/projects/tomclient/tomapi"
+	"tomclient/tomapi"
 )
 
 // BulkInventory processes devices for inventory collection
