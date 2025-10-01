@@ -1,72 +1,46 @@
 # tomclient
 
-A CLI client for the Tom Smykowski network automation broker service. Execute commands on network devices, manage inventory, and perform bulk operations with support for OAuth, API key, or no authentication.
+A CLI client for the Tom Smykowski network automation broker service.
 
-## Features
-
-- **Device command execution** - Run commands on network devices via inventory
-- **Bulk operations** - Execute commands across multiple devices concurrently
-- **Inventory management** - Export and manage device inventory
-- **Multiple auth modes** - OAuth (JWT), API key, or no authentication
-- **Interface parsing** - Parse and analyze Cisco interface configurations
-- **Hardware inventory** - Extract serial numbers and calculate device age
+Authenticate with OAuth, API keys, or no auth, then execute commands on network devices or export inventory.
 
 ## Installation
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd tomclient
-
-# Build the binary
 go build
-
-# Install (optional)
-go install
 ```
 
 ## Quick Start
 
-### Basic Usage (No Auth)
+### With No Authentication
 
 ```bash
-# Set API URL
 export TOM_API_URL=http://localhost:8020
+export TOM_AUTH_MODE=none
 
-# Run a command on a device
 tomclient device router1 "show version"
-
-# Get inventory
-tomclient export inventory
-
-# Bulk inventory collection
-tomclient bulk-inventory devices.json --concurrency=20
 ```
 
-### With OAuth Authentication
+### With API Key
 
 ```bash
-# Configure OAuth (works with any OIDC provider)
+export TOM_API_URL=http://localhost:8020
+export TOM_AUTH_MODE=api_key
+export TOM_API_KEY=your-secret-key
+
+tomclient device router1 "show version"
+```
+
+### With OAuth
+
+```bash
+export TOM_API_URL=http://localhost:8020
 export TOM_AUTH_MODE=jwt
 export TOM_OAUTH_CLIENT_ID=your-client-id
 export TOM_OAUTH_DISCOVERY_URL=https://accounts.google.com/.well-known/openid-configuration
 
 # Authenticate (opens browser)
 tomclient auth login
-
-# Check auth status
-tomclient auth status
-
-# Run commands (uses stored token)
-tomclient device router1 "show version"
-```
-
-### With API Key Authentication
-
-```bash
-# Configure API key
-export TOM_AUTH_MODE=api_key
-export TOM_API_KEY=your-secret-api-key
 
 # Run commands
 tomclient device router1 "show version"
@@ -77,7 +51,7 @@ tomclient device router1 "show version"
 ### Authentication
 
 ```bash
-# Authenticate with OAuth
+# Login with OAuth
 tomclient auth login
 
 # Check authentication status
@@ -87,391 +61,242 @@ tomclient auth status
 tomclient auth logout
 ```
 
-### Device Operations
+### Device Commands
+
+Execute commands on network devices:
 
 ```bash
-# Execute command on a device
 tomclient device <device-name> <command> [flags]
 
-# Options:
-#   -t, --timeout int      Command timeout in seconds (default 10)
-#   -w, --wait            Wait for command completion (default true)
-#   -r, --raw             Return raw command output (default true)
-#   -u, --username string Override username for authentication
-#   -p, --password string Override password for authentication
-
-# Examples:
+# Examples
 tomclient device router1 "show version"
 tomclient device switch1 "show interface" --timeout=30
-tomclient device router2 "show running-config" -u admin -p secret
+tomclient device router2 "show ip route" --raw
 ```
 
-### Bulk Operations
+**Flags:**
+- `-t, --timeout int` - Command timeout in seconds (default: 10)
+- `-w, --wait` - Wait for command completion (default: true)
+- `-r, --raw` - Return raw output (default: true)
+- `-u, --username string` - Override username
+- `-p, --password string` - Override password
+
+### Export Inventory
+
+Export device inventory from Tom API:
 
 ```bash
-# Run inventory command on multiple devices
-tomclient bulk-inventory <devices-file> [flags]
+tomclient export [flags]
 
-# Options:
-#   -c, --concurrency int  Number of concurrent workers (default 20)
-#   -o, --output-dir string Output directory for inventory files (default "inventory")
-
-# Example:
-tomclient bulk-inventory devices.json --concurrency=10 --output-dir=./data
+# Examples
+tomclient export                          # All devices, pretty JSON
+tomclient export --filter=routers         # Filtered devices
+tomclient export --output=json            # Compact JSON
 ```
 
-### Inventory Management
-
-```bash
-# Export inventory
-tomclient export inventory [flags]
-
-# Generate inventory report
-tomclient report [flags]
-#   -i, --input-dir string  Directory containing inventory files (default "inventory")
-#   -o, --output string     Output CSV file name (default "inventory_report.csv")
-```
-
-### Interface Management
-
-```bash
-# Parse interface configurations
-tomclient parse-interfaces <file>
-
-# Collect interfaces from devices
-tomclient collect-interfaces [flags]
-```
+**Flags:**
+- `-f, --filter string` - Filter name (optional)
+- `-o, --output string` - Output format: `json` or `pretty` (default: pretty)
 
 ## Configuration
 
-### Authentication Modes
+### Config File
 
-tomclient supports three authentication modes:
-
-1. **`none`** (default) - No authentication
-2. **`api_key`** - Static API key authentication
-3. **`jwt`** - OAuth/PKCE authentication with Duo or other OIDC providers
-
-Set the mode via `TOM_AUTH_MODE` environment variable or config file.
-
-### Configuration Hierarchy
-
-Configuration is loaded in this order (later sources override earlier):
-
-1. **Config file** - `~/.tom/config.json` (or path specified by `--config-dir`)
-2. **Environment variables** - `TOM_*` variables
-3. **Command-line flags** - e.g., `--api-url`, `--config-dir`
-
-**Example:** If `api_url` is set in the config file, `TOM_API_URL` environment variable, and `--api-url` flag, the flag value wins.
-
-### Config File Location
-
-Default: `~/.tom/config.json`
-
-Override with:
-- `--config-dir` flag: `tomclient --config-dir=/path/to/config`
-- Environment variable: `export TOM_CONFIG_DIR=/path/to/config`
-
-### Config File Format
-
-All configuration options can be set in the config file:
+Store settings in `~/.tom/config.json`:
 
 ```json
 {
   "api_url": "http://localhost:8020",
   "auth_mode": "jwt",
   "oauth_client_id": "your-client-id",
-  "oauth_discovery_url": "https://accounts.google.com/.well-known/openid-configuration",
-  "oauth_redirect_port": 8899,
-  "oauth_scopes": "openid email profile"
+  "oauth_discovery_url": "https://accounts.google.com/.well-known/openid-configuration"
 }
 ```
 
-For API key mode:
-```json
-{
-  "api_url": "http://localhost:8020",
-  "auth_mode": "api_key",
-  "api_key": "your-secret-api-key"
-}
+### Override Config Location
+
+```bash
+# Via flag
+tomclient --config-dir=/path/to/config auth status
+
+# Via environment variable
+export TOM_CONFIG_DIR=/path/to/config
+tomclient auth status
 ```
+
+### Configuration Precedence
+
+Settings are loaded in this order (later overrides earlier):
+
+1. Config file (`~/.tom/config.json`)
+2. Environment variables (`TOM_*`)
+3. Command-line flags
 
 ### Environment Variables
 
-| Variable | Required For | Default | Description |
-|----------|-------------|---------|-------------|
-| `TOM_API_URL` | All modes | `http://localhost:8000` | Tom API server URL |
-| `TOM_AUTH_MODE` | - | `none` | Auth mode: `none`, `api_key`, or `jwt` |
-| `TOM_API_KEY` | `api_key` mode | - | API key for authentication |
-| `TOM_OAUTH_CLIENT_ID` | `jwt` mode | - | OAuth client ID |
-| `TOM_OAUTH_DISCOVERY_URL` | `jwt` mode | - | Full URL to OIDC discovery document |
-| `TOM_OAUTH_REDIRECT_PORT` | - | `8899` | Local callback server port for OAuth |
-| `TOM_OAUTH_SCOPES` | - | `openid email profile` | OAuth scopes to request |
-| `TOM_CONFIG_DIR` | - | `~/.tom` | Config directory path |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TOM_API_URL` | `http://localhost:8000` | Tom API server URL |
+| `TOM_AUTH_MODE` | `none` | Auth mode: `none`, `api_key`, or `jwt` |
+| `TOM_API_KEY` | - | API key (for `api_key` mode) |
+| `TOM_OAUTH_CLIENT_ID` | - | OAuth client ID (for `jwt` mode) |
+| `TOM_OAUTH_DISCOVERY_URL` | - | OIDC discovery URL (for `jwt` mode) |
+| `TOM_OAUTH_REDIRECT_PORT` | `8899` | OAuth callback port |
+| `TOM_OAUTH_SCOPES` | `openid email profile` | OAuth scopes |
+| `TOM_CONFIG_DIR` | `~/.tom` | Config directory path |
 
 ### Global Flags
 
+Available on all commands:
+
+- `-a, --api-url string` - Tom API server URL
+- `--config-dir string` - Config directory path
+- `-h, --help` - Help for command
+
+## Authentication Modes
+
+### None (Default)
+
+No authentication. Use when Tom API runs with `TOM_CORE_AUTH_MODE=none`.
+
 ```bash
--a, --api-url string      Tom API server URL (default "http://localhost:8000")
-    --config-dir string   Config directory path (default "~/.tom")
--h, --help               Help for any command
+export TOM_AUTH_MODE=none
 ```
 
-## Authentication Details
+### API Key
 
-### OAuth (JWT Mode)
-
-When using `auth_mode=jwt`, tomclient uses OAuth 2.0 with PKCE (Proof Key for Code Exchange) for secure authentication without client secrets. You provide the full OIDC discovery URL, and the client fetches the provider's OAuth endpoints.
-
-**Flow:**
-1. Run `tomclient auth login`
-2. Client fetches your provider's OIDC discovery document from `TOM_OAUTH_DISCOVERY_URL`
-3. Browser opens to the discovered authorization endpoint
-4. Complete authentication (MFA, SSO, etc.)
-5. Browser redirects to localhost callback
-6. Token is exchanged at the discovered token endpoint and saved to `~/.tom/token.json` with 0600 permissions
-7. Subsequent commands use the stored token automatically
-
-**Finding your discovery URL:** Most OIDC providers have their discovery document at `{base_url}/.well-known/openid-configuration`. Check your provider's documentation or try accessing that URL in your browser - it should return a JSON document with endpoints.
-
-**Token management:**
-- Tokens expire after the period specified by your IdP (typically 1 hour)
-- Tokens are automatically validated before each request
-- If expired, you'll see: `Error: token expired - run 'tomclient auth login'`
-- Tokens are stored with 60-second expiration buffer for safety
-
-**Manual URL fallback:**
-If the browser doesn't open automatically (e.g., SSH session), the authentication URL is printed for manual copy/paste.
-
-### API Key Mode
-
-Simple static key authentication. The API key is sent in the `X-API-Key` header with every request.
+Static key authentication. Key sent in `X-API-Key` header.
 
 ```bash
 export TOM_AUTH_MODE=api_key
 export TOM_API_KEY=your-secret-key
-tomclient device router1 "show version"
 ```
 
-### No Authentication Mode
+### OAuth (JWT)
 
-For testing or when the Tom API is running with `TOM_CORE_AUTH_MODE=none`.
+OAuth 2.0 with PKCE. Works with any OIDC-compliant provider (Google, Microsoft, Duo, Okta, etc.).
 
 ```bash
-export TOM_AUTH_MODE=none
-tomclient device router1 "show version"
+export TOM_AUTH_MODE=jwt
+export TOM_OAUTH_CLIENT_ID=your-client-id
+export TOM_OAUTH_DISCOVERY_URL=https://provider/.well-known/openid-configuration
+
+tomclient auth login    # Authenticate via browser
 ```
 
-## Configuration Validation
+Tokens stored in `~/.tom/token.json` and used automatically for API requests.
 
-tomclient validates configuration on startup and provides clear error messages:
+See [AUTH.md](AUTH.md) for detailed authentication documentation.
 
-**Missing required config:**
-```
-Error: auth_mode is 'jwt' but TOM_DUO_CLIENT_ID is not set
-```
+## Examples
 
-**Unused configuration warnings:**
-```
-Warning: TOM_API_KEY is set but auth_mode is 'none' - API key will not be used
-```
-
-**Not authenticated:**
-```
-Error: not authenticated - run 'tomclient auth login' first
-```
-
-## Development & Testing
-
-### Using a Test Config Directory
-
-For development or testing, use a local config directory:
+### Basic Device Command
 
 ```bash
-# Create test config
-mkdir -p .tom-test
-cat > .tom-test/config.json << 'EOF'
+tomclient device ROUTER1 "show version"
+```
+
+### Device Command with Timeout
+
+```bash
+tomclient device ROUTER1 "show running-config" --timeout=60
+```
+
+### Export All Devices
+
+```bash
+tomclient export
+```
+
+### Export Filtered Devices
+
+```bash
+tomclient export --filter=routers --output=json
+```
+
+### Using Config File
+
+```bash
+# Create config
+mkdir -p ~/.tom
+cat > ~/.tom/config.json << EOF
 {
   "api_url": "http://localhost:8020",
-  "auth_mode": "jwt",
-  "oauth_client_id": "test-client-id",
-  "oauth_discovery_url": "https://accounts.google.com/.well-known/openid-configuration"
+  "auth_mode": "api_key",
+  "api_key": "my-secret-key"
 }
 EOF
 
 # Use it
-tomclient --config-dir=.tom-test auth status
-tomclient --config-dir=.tom-test device router1 "show version"
+tomclient device router1 "show version"
 ```
 
-### Building
+### OAuth Authentication
 
 ```bash
-go build
-./tomclient --version
-```
+# Configure
+export TOM_AUTH_MODE=jwt
+export TOM_OAUTH_CLIENT_ID=abc123
+export TOM_OAUTH_DISCOVERY_URL=https://accounts.google.com/.well-known/openid-configuration
 
-### Running Tests
+# Login
+tomclient auth login
 
-```bash
-go test ./...
-```
+# Check status
+tomclient auth status
 
-## Examples
-
-### Device Command Execution
-
-```bash
-# Basic command
-tomclient device ASHBVA21AS1 "show version"
-
-# With timeout
-tomclient device ASHBVA21AS1 "show inventory" --timeout=30
-
-# With credential override
-tomclient device ASHBVA21AS1 "show running-config" -u admin -p secret
-```
-
-### Bulk Inventory Collection
-
-```bash
-# Create devices file
-cat > devices.json << 'EOF'
-{
-  "ASHBVA21AS1": "192.168.1.1",
-  "ASHBVA21AS2": "192.168.1.2",
-  "ATLAGA18AS1": "192.168.2.1"
-}
-EOF
-
-# Run bulk collection
-tomclient bulk-inventory devices.json --concurrency=20 --output-dir=inventory
-
-# Generate report from collected data
-tomclient report --input-dir=inventory --output=devices.csv
-```
-
-### Inventory Management
-
-```bash
-# Export all devices
-tomclient export inventory
-
-# Export with filter
-tomclient export inventory --filter=routers
-
-# List available filters
-tomclient export filters
-```
-
-### Interface Analysis
-
-```bash
-# Parse interface config from file
-tomclient parse-interfaces interfaces/ASHBVA21AS1_interfaces.txt
-
-# Collect interfaces from multiple devices
-tomclient collect-interfaces --devices=routers.json
-```
-
-## File Structure
-
-```
-tomclient/
-├── auth/              # Authentication package
-│   ├── config.go      # Config management
-│   ├── oauth.go       # OAuth/PKCE flow
-│   ├── pkce.go        # PKCE code generation
-│   └── token.go       # Token storage
-├── cmd/               # CLI commands
-│   ├── root.go        # Root command
-│   ├── auth.go        # Auth subcommands
-│   ├── device.go      # Device operations
-│   ├── bulk.go        # Bulk operations
-│   ├── export.go      # Inventory export
-│   └── report.go      # Report generation
-├── internal/          # Internal packages
-│   ├── commands.go    # Command utilities
-│   ├── parser.go      # Inventory parsing
-│   ├── interface_parser.go  # Interface parsing
-│   └── reports.go     # Report generation
-├── tomapi/            # Tom API client
-│   ├── client.go      # HTTP client
-│   ├── devices.go     # Device methods
-│   ├── inventory.go   # Inventory methods
-│   └── types.go       # Data types
-└── main.go            # Entry point
+# Use authenticated commands
+tomclient device router1 "show version"
+tomclient export --filter=switches
 ```
 
 ## Error Handling
 
-tomclient provides clear, actionable error messages:
+Common errors and solutions:
 
-| Error | Meaning | Solution |
-|-------|---------|----------|
-| `auth_mode is 'jwt' but TOM_OAUTH_CLIENT_ID is not set` | Missing OAuth config | Set `TOM_OAUTH_CLIENT_ID` and `TOM_OAUTH_DISCOVERY_URL` |
-| `failed to fetch OIDC discovery from ...` | Can't fetch discovery document | Check `TOM_OAUTH_DISCOVERY_URL` is correct and accessible |
-| `not authenticated - run 'tomclient auth login' first` | No stored token | Run `tomclient auth login` |
-| `token expired - run 'tomclient auth login'` | Token expired | Re-authenticate with `tomclient auth login` |
-| `API returned status code: 401` | Invalid/missing auth | Check auth mode and credentials |
-| `failed to load config` | Config file issue | Check `~/.tom/config.json` syntax |
+| Error | Solution |
+|-------|----------|
+| `Configuration error: auth_mode is 'jwt' but TOM_OAUTH_CLIENT_ID is not set` | Set required OAuth variables |
+| `not authenticated - run 'tomclient auth login' first` | Run `tomclient auth login` |
+| `token expired - run 'tomclient auth login'` | Re-authenticate |
+| `API returned status code: 401` | Check auth mode and credentials |
+| `failed to fetch OIDC discovery from ...` | Verify discovery URL is correct |
 
-## Security
-
-- **Token files** (`~/.tom/token.json`) stored with 0600 permissions
-- **Config files** (`~/.tom/config.json`) stored with 0600 permissions
-- **PKCE flow** prevents authorization code interception
-- **State parameter** prevents CSRF attacks during OAuth
-- **60-second expiration buffer** prevents using expired tokens
-- **No token logging** - Sensitive data never printed to console
-
-## Troubleshooting
-
-### OAuth browser doesn't open
-
-The authentication URL is always printed. Copy and paste it into your browser manually:
+## Project Structure
 
 ```
-If the browser doesn't open automatically, visit this URL:
-https://sso-xxxxx.sso.duosecurity.com/oidc/...
+tomclient/
+├── auth/              # OAuth/PKCE authentication
+├── cmd/               # CLI commands (auth, device, export)
+├── tomapi/            # Tom API client library
+├── AUTH.md            # Authentication guide
+├── README.md          # This file
+├── go.mod             # Go dependencies
+└── main.go            # Entry point
 ```
 
-### Port 8899 already in use
+## Development
 
-The OAuth callback server will automatically find a free port and update the redirect URI accordingly.
-
-### Token expired
-
-Tokens expire after the period set by your identity provider (typically 1 hour). Simply re-authenticate:
+### Build
 
 ```bash
-tomclient auth login
+go build
 ```
 
-### Config not loading
-
-Check the config directory being used:
+### Test with Local Config
 
 ```bash
-tomclient auth status
-# Shows: Config Dir: /home/user/.tom
+mkdir -p .tom-test
+cat > .tom-test/config.json << EOF
+{
+  "api_url": "http://localhost:8020",
+  "auth_mode": "none"
+}
+EOF
+
+./tomclient --config-dir=.tom-test device test-device "show version"
 ```
-
-Override if needed:
-```bash
-tomclient --config-dir=/custom/path auth status
-```
-
-## API Reference
-
-See [api-endpoints.md](api-endpoints.md) for Tom API endpoint documentation.
-
-See [AUTH.md](AUTH.md) for detailed authentication guide.
 
 ## License
 
-[Add your license here]
-
-## Contributing
-
-[Add contributing guidelines here]
+[Add license here]

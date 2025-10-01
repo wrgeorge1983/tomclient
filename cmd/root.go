@@ -19,7 +19,7 @@ var rootCmd = &cobra.Command{
 	Use:   "tomclient",
 	Short: "Tom Smykowski network automation client",
 	Long: `A CLI client for the Tom Smykowski network automation broker service.
-Supports device command execution, inventory management, and bulk operations.`,
+Authenticate with OAuth, API keys, or no auth, then execute commands on network devices or export inventory.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if cmd.Name() == "auth" || cmd.Parent() != nil && cmd.Parent().Name() == "auth" {
 			return
