@@ -1,3 +1,5 @@
 .claude
 devices.json
 inventory
+.tom-test/
+tomclient

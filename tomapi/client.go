@@ -1,58 +1,87 @@
 package tomapi
 
 import (
+	"fmt"
 	"net/http"
-	"os"
 )
 
-// Client represents a Tom API client
+type AuthConfig interface {
+	GetAuthMode() string
+	GetAPIKey() string
+	GetConfigDir() string
+}
+
 type Client struct {
-	BaseURL   string
-	APIKey    string
-	KeyHeader string
+	BaseURL    string
+	AuthConfig AuthConfig
 	HTTPClient *http.Client
 }
 
-// NewClient creates a new Tom API client
-func NewClient(baseURL string) *Client {
-	apiKey := os.Getenv("TOM_API_KEY")
-	keyHeader := os.Getenv("TOM_API_KEY_HEADER")
-	if keyHeader == "" {
-		keyHeader = "X-API-Key"
-	}
-
+func NewClient(baseURL string, authConfig AuthConfig) *Client {
 	return &Client{
 		BaseURL:    baseURL,
-		APIKey:     apiKey,
-		KeyHeader:  keyHeader,
+		AuthConfig: authConfig,
 		HTTPClient: &http.Client{},
 	}
 }
 
-// NewClientWithAuth creates a new Tom API client with explicit auth
-func NewClientWithAuth(baseURL, apiKey, keyHeader string) *Client {
-	if keyHeader == "" {
-		keyHeader = "X-API-Key"
-	}
-	
-	return &Client{
-		BaseURL:    baseURL,
-		APIKey:     apiKey,
-		KeyHeader:  keyHeader,
-		HTTPClient: &http.Client{},
-	}
-}
-
-// makeRequest creates and executes an HTTP request with authentication
 func (c *Client) makeRequest(method, url string) (*http.Response, error) {
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	
-	if c.APIKey != "" {
-		req.Header.Set(c.KeyHeader, c.APIKey)
+
+	if err := c.setAuthHeader(req); err != nil {
+		return nil, err
 	}
-	
+
 	return c.HTTPClient.Do(req)
+}
+
+func (c *Client) setAuthHeader(req *http.Request) error {
+	if c.AuthConfig == nil {
+		return nil
+	}
+
+	authMode := c.AuthConfig.GetAuthMode()
+
+	switch authMode {
+	case "none":
+		return nil
+
+	case "api_key":
+		apiKey := c.AuthConfig.GetAPIKey()
+		if apiKey == "" {
+			return fmt.Errorf("auth_mode is 'api_key' but TOM_API_KEY is not set")
+		}
+		req.Header.Set("X-API-Key", apiKey)
+		return nil
+
+	case "jwt":
+		token, err := c.loadJWTToken()
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+		return nil
+
+	default:
+		return fmt.Errorf("unknown auth mode: %s", authMode)
+	}
+}
+
+func (c *Client) loadJWTToken() (string, error) {
+	configDir := c.AuthConfig.GetConfigDir()
+
+	tokenPath := getTokenPath(configDir)
+	token, err := loadStoredToken(tokenPath)
+	if err != nil {
+		return "", err
+	}
+
+	if !token.IsValid() {
+		return "", fmt.Errorf("token expired - run 'tomclient auth login' to re-authenticate")
+	}
+
+	return token.GetToken(), nil
 }

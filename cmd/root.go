@@ -5,12 +5,14 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"tomclient/auth"
 	"tomclient/tomapi"
 )
 
 var (
-	apiURL string
-	client *tomapi.Client
+	apiURL    string
+	configDir string
+	client    *tomapi.Client
 )
 
 var rootCmd = &cobra.Command{
@@ -19,8 +21,27 @@ var rootCmd = &cobra.Command{
 	Long: `A CLI client for the Tom Smykowski network automation broker service.
 Supports device command execution, inventory management, and bulk operations.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Initialize client with the API URL
-		client = tomapi.NewClient(apiURL)
+		if cmd.Name() == "auth" || cmd.Parent() != nil && cmd.Parent().Name() == "auth" {
+			return
+		}
+
+		cfg, err := auth.LoadConfig(configDir)
+		if err != nil {
+			fmt.Printf("Error loading config: %v\n", err)
+			os.Exit(1)
+		}
+
+		if err := cfg.Validate(); err != nil {
+			fmt.Printf("Configuration error: %v\n", err)
+			os.Exit(1)
+		}
+
+		finalAPIURL := apiURL
+		if apiURL == getDefaultAPIURL() && cfg.APIURL != "" {
+			finalAPIURL = cfg.APIURL
+		}
+
+		client = tomapi.NewClient(finalAPIURL, cfg)
 	},
 }
 
@@ -32,8 +53,8 @@ func Execute() {
 }
 
 func init() {
-	// Global flags available to all commands
 	rootCmd.PersistentFlags().StringVarP(&apiURL, "api-url", "a", getDefaultAPIURL(), "Tom API server URL")
+	rootCmd.PersistentFlags().StringVar(&configDir, "config-dir", auth.GetConfigDir(), "Config directory path")
 }
 
 func getDefaultAPIURL() string {
