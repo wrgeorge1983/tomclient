@@ -20,6 +20,7 @@ var authLoginCmd = &cobra.Command{
 	Long: `Authenticate with the Tom API using OAuth/PKCE flow.
 Opens a browser window for authentication with your identity provider.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
 		cfg, err := auth.LoadConfig(configDir)
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
@@ -42,6 +43,7 @@ var authStatusCmd = &cobra.Command{
 	Short: "Show authentication status",
 	Long:  `Display current authentication configuration and token status.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
 		cfg, err := auth.LoadConfig(configDir)
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
@@ -96,6 +98,7 @@ var authLogoutCmd = &cobra.Command{
 	Short: "Clear stored authentication token",
 	Long:  `Remove the stored OAuth token. You will need to run 'auth login' again to authenticate.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
 		cfg, err := auth.LoadConfig(configDir)
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)

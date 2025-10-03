@@ -42,6 +42,16 @@ func GetConfigDir() string {
 	if dir := os.Getenv("TOM_CONFIG_DIR"); dir != "" {
 		return dir
 	}
+
+	// If running under sudo, use the original user's home directory
+	if sudoUser := os.Getenv("SUDO_USER"); sudoUser != "" {
+		if sudoHome := os.Getenv("SUDO_HOME"); sudoHome != "" {
+			return filepath.Join(sudoHome, ".tom")
+		}
+		// Fallback: construct home directory from SUDO_USER
+		return filepath.Join("/home", sudoUser, ".tom")
+	}
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return ".tom"

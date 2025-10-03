@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"tomclient/auth"
 )
 
 var (
@@ -23,7 +24,26 @@ Supports credential override and timeout configuration.`,
   tomclient device switch2 "show interface" -t 60 --raw
   tomclient device -u admin -p secret router3 "show running-config"`,
 	Args: cobra.ExactArgs(2),
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if len(args) != 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		cfg, err := auth.LoadConfig(configDir)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		cache, err := auth.LoadInventoryCache(cfg.ConfigDir)
+		if err != nil || cache == nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+
+		return cache.Devices, cobra.ShellCompDirectiveNoFileComp
+	},
 	Run: func(cmd *cobra.Command, args []string) {
+		cmd.SilenceUsage = true
+
 		deviceName := args[0]
 		command := args[1]
 

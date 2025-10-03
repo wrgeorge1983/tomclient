@@ -20,6 +20,7 @@ Optionally filter the results using predefined filters.`,
 	Example: `  tomclient export --filter=routers --format=json
   tomclient export -f switches -o pretty`,
 	Run: func(cmd *cobra.Command, args []string) {
+		cmd.SilenceUsage = true
 		inventory, err := client.ExportInventory(exportFilter)
 		handleError(err)
 

@@ -1,0 +1,6 @@
+* add --version support
+    * start regularly bumping --version 
+
+* tomclient should initialize it's config directory if required (empty though)
+
+* tomclient should have a command to create a valid config (interactive questions to fill out the fields)

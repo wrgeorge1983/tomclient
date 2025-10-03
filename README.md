@@ -48,6 +48,42 @@ tomclient device router1 "show version"
 
 ## Commands
 
+### Inventory Cache
+
+List and cache device hostnames for fast lookups and shell autocomplete:
+
+```bash
+# List all devices (auto-fetches and caches)
+tomclient inventory
+
+# Force refresh from API
+tomclient inventory --refresh
+
+# Filter by prefix
+tomclient inventory --prefix=router
+
+# Output in /etc/hosts format
+tomclient inventory --hostfile
+
+# Update /etc/hosts with device entries (requires sudo)
+sudo tomclient inventory --update-hosts
+
+# Clear cache
+tomclient inventory clear
+```
+
+The inventory cache:
+- Stored in `~/.tom/inventory_cache.json`
+- Default TTL: 1 hour (configurable via `TOM_CACHE_TTL`)
+- Automatically refreshed when expired
+- Used for device name autocomplete
+
+The `/etc/hosts` integration:
+- Creates managed block in `/etc/hosts`
+- Maps device names to IP addresses from inventory
+- Updates are atomic (writes to temp file, then renames)
+- Preserves existing entries outside managed block
+
 ### Authentication
 
 ```bash
@@ -98,6 +134,41 @@ tomclient export --output=json            # Compact JSON
 - `-f, --filter string` - Filter name (optional)
 - `-o, --output string` - Output format: `json` or `pretty` (default: pretty)
 
+### Hosts File Management
+
+Automatically populate `/etc/hosts` with device names from inventory:
+
+```bash
+# Preview hostfile format
+tomclient inventory --hostfile
+
+# Update /etc/hosts (requires sudo)
+sudo tomclient inventory --update-hosts
+
+# Update with filtered devices
+sudo tomclient inventory --prefix=prod --update-hosts
+```
+
+The managed block in `/etc/hosts` looks like:
+```
+# BEGIN tomclient managed block
+# This section is automatically managed by tomclient
+# Do not edit manually - changes will be overwritten
+192.168.1.1    router1
+192.168.1.2    router2
+192.168.2.1    switch1
+# END tomclient managed block
+```
+
+**Features:**
+- Safe updates (atomic write via temp file)
+- Preserves existing entries
+- Clearly marked managed section
+- Can be run repeatedly to update
+- Sudo-aware: automatically uses your config/cache even when run with sudo
+
+**Note:** When using `sudo`, tomclient automatically detects the original user and uses their config directory (`~/.tom/`), so authentication and cache work seamlessly.
+
 ## Configuration
 
 ### Config File
@@ -124,6 +195,8 @@ export TOM_CONFIG_DIR=/path/to/config
 tomclient auth status
 ```
 
+**Sudo Behavior:** When running with `sudo`, tomclient automatically detects the original user (via `SUDO_USER` environment variable) and uses their config directory. This means authentication and cached inventory work correctly even when elevated privileges are needed (e.g., for `--update-hosts`).
+
 ### Configuration Precedence
 
 Settings are loaded in this order (later overrides earlier):
@@ -144,6 +217,7 @@ Settings are loaded in this order (later overrides earlier):
 | `TOM_OAUTH_REDIRECT_PORT` | `8899` | OAuth callback port |
 | `TOM_OAUTH_SCOPES` | `openid email profile` | OAuth scopes |
 | `TOM_CONFIG_DIR` | `~/.tom` | Config directory path |
+| `TOM_CACHE_TTL` | `1h` | Inventory cache TTL (duration: 30m, 2h, etc.) |
 
 ### Global Flags
 
@@ -274,6 +348,37 @@ tomclient/
 ├── go.mod             # Go dependencies
 └── main.go            # Entry point
 ```
+
+## Shell Autocomplete
+
+tomclient provides device name autocomplete for SSH and other commands using cached inventory.
+
+### Quick Setup
+
+**Bash** - Add to `~/.bashrc`:
+```bash
+eval "$(tomclient completion bash)"
+source /path/to/tomclient/shell/ssh_complete.sh
+```
+
+**Zsh** - Add to `~/.zshrc`:
+```zsh
+eval "$(tomclient completion zsh)"
+source /path/to/tomclient/shell/ssh_complete.zsh
+```
+
+### Usage
+
+```bash
+# Populate cache
+tomclient inventory --refresh
+
+# SSH autocomplete now works
+ssh router<TAB>
+# Completes to: router1, router2, router-3, etc.
+```
+
+See [AUTOCOMPLETE.md](AUTOCOMPLETE.md) for complete setup guide, troubleshooting, and advanced usage.
 
 ## Development
 

@@ -19,7 +19,13 @@ var rootCmd = &cobra.Command{
 	Use:   "tomclient",
 	Short: "Tom Smykowski network automation client",
 	Long: `A CLI client for the Tom Smykowski network automation broker service.
-Authenticate with OAuth, API keys, or no auth, then execute commands on network devices or export inventory.`,
+
+Features:
+  - Authentication: OAuth (PKCE), API keys, or none
+  - Device commands: Execute commands on network devices
+  - Inventory: Export and cache device lists
+  - Autocomplete: Shell completion for device names`,
+	SilenceUsage: false,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if cmd.Name() == "auth" || cmd.Parent() != nil && cmd.Parent().Name() == "auth" {
 			return
@@ -69,4 +75,8 @@ func handleError(err error) {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func createClient(apiURL string, cfg *auth.Config) *tomapi.Client {
+	return tomapi.NewClient(apiURL, cfg)
 }
