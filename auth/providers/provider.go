@@ -17,7 +17,9 @@ func GetProvider(name string) (Provider, error) {
 		return &OIDCProvider{}, nil
 	case "google":
 		return &GoogleProvider{}, nil
+	case "microsoft":
+		return &MicrosoftProvider{}, nil
 	default:
-		return nil, fmt.Errorf("unknown OAuth provider '%s' - must be one of: oidc, google", name)
+		return nil, fmt.Errorf("unknown OAuth provider '%s' - must be one of: oidc, google, microsoft", name)
 	}
 }

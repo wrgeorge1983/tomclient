@@ -117,7 +117,7 @@ Environment variables can override config file settings:
 | `TOM_API_URL` | - | `http://localhost:8000` | Tom API server URL |
 | `TOM_AUTH_MODE` | - | `none` | Auth mode: `none`, `api_key`, or `jwt` |
 | `TOM_API_KEY` | `api_key` | - | API key for authentication |
-| `TOM_OAUTH_PROVIDER` | `jwt` | `oidc` | OAuth provider: `oidc` or `google` |
+| `TOM_OAUTH_PROVIDER` | `jwt` | `oidc` | OAuth provider: `oidc`, `google`, or `microsoft` |
 | `TOM_OAUTH_CLIENT_ID` | `jwt` | - | OAuth client ID |
 | `TOM_OAUTH_CLIENT_SECRET` | `jwt` (Google only) | - | OAuth client secret (required for Google) |
 | `TOM_OAUTH_DISCOVERY_URL` | `jwt` | - | Full URL to OIDC discovery document |
@@ -175,6 +175,28 @@ Google requires a client secret even when using PKCE. Create OAuth credentials i
 
 **Note:** Set authorized redirect URI to `http://localhost:8899/callback` in Google Cloud Console.
 
+#### Microsoft Provider (microsoft)
+
+Microsoft Entra ID (Azure AD) supports PKCE for public clients without requiring a client secret.
+
+**Example config.json:**
+```json
+{
+  "auth_mode": "jwt",
+  "oauth_provider": "microsoft",
+  "oauth_client_id": "your-client-id",
+  "oauth_discovery_url": "https://login.microsoftonline.com/your-tenant-id/v2.0/.well-known/openid-configuration"
+}
+```
+
+**Note:** 
+- Create an app registration in Azure Portal and select "Public client/native" (not "Web")
+- Set redirect URI to `http://localhost:8899/callback` in Azure app registration
+- Enable "Allow public client flows" in Authentication settings
+- Replace `your-tenant-id` with your Azure AD tenant ID
+- For single-tenant apps, use the tenant-specific discovery URL shown above
+- For multi-tenant apps, use `https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration`
+
 ### Token Management
 
 - Tokens expire based on provider settings (typically 1 hour)
@@ -188,7 +210,7 @@ Google requires a client secret even when using PKCE. Create OAuth credentials i
 |-------|----------|
 | `auth_mode is 'jwt' but TOM_OAUTH_CLIENT_ID is not set` | Add `oauth_client_id` to config.json or set `TOM_OAUTH_CLIENT_ID` |
 | `OAuth provider 'google' requires client_secret but TOM_OAUTH_CLIENT_SECRET is not set` | Add `oauth_client_secret` to config.json or set `TOM_OAUTH_CLIENT_SECRET` |
-| `unknown OAuth provider 'xxx'` | Use `oidc` or `google` as `oauth_provider` |
+| `unknown OAuth provider 'xxx'` | Use `oidc`, `google`, or `microsoft` as `oauth_provider` |
 | `failed to fetch OIDC discovery from ...` | Verify discovery URL is correct and accessible |
 | `not authenticated - run 'tomclient auth login' first` | Run `tomclient auth login` |
 | `token expired - run 'tomclient auth login'` | Re-authenticate with `tomclient auth login` |

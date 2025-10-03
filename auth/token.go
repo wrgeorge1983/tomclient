@@ -88,7 +88,7 @@ func (t *StoredToken) IsValid() bool {
 }
 
 func (t *StoredToken) GetToken() string {
-	if t.Provider == "google" {
+	if t.Provider == "google" || t.Provider == "microsoft" {
 		if t.IDToken != "" {
 			return t.IDToken
 		}

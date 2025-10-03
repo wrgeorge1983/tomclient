@@ -249,9 +249,9 @@ Environment variables can override config file settings:
 | `TOM_API_URL` | `http://localhost:8000` | Tom API server URL |
 | `TOM_AUTH_MODE` | `none` | Auth mode: `none`, `api_key`, or `jwt` |
 | `TOM_API_KEY` | - | API key (for `api_key` mode) |
-| `TOM_OAUTH_PROVIDER` | `oidc` | OAuth provider: `oidc` or `google` |
+| `TOM_OAUTH_PROVIDER` | `oidc` | OAuth provider: `oidc`, `google`, or `microsoft` |
 | `TOM_OAUTH_CLIENT_ID` | - | OAuth client ID (for `jwt` mode) |
-| `TOM_OAUTH_CLIENT_SECRET` | - | OAuth client secret (required for Google) |
+| `TOM_OAUTH_CLIENT_SECRET` | - | OAuth client secret (required for Google only) |
 | `TOM_OAUTH_DISCOVERY_URL` | - | OIDC discovery URL (for `jwt` mode) |
 | `TOM_OAUTH_REDIRECT_PORT` | `8899` | OAuth callback port |
 | `TOM_OAUTH_SCOPES` | `openid email profile` | OAuth scopes |
@@ -290,6 +290,7 @@ export TOM_API_KEY=your-secret-key
 OAuth 2.0 with PKCE. Supports multiple providers:
 - **Standard OIDC** (Duo, Okta, Keycloak, Auth0) - No client secret required
 - **Google** - Requires client secret
+- **Microsoft** (Entra ID / Azure AD) - No client secret required (public client)
 
 **config.json (standard OIDC):**
 ```json
@@ -309,6 +310,16 @@ OAuth 2.0 with PKCE. Supports multiple providers:
   "oauth_client_id": "xxx.apps.googleusercontent.com",
   "oauth_client_secret": "GOCSPX-xxxxx",
   "oauth_discovery_url": "https://accounts.google.com/.well-known/openid-configuration"
+}
+```
+
+**config.json (Microsoft):**
+```json
+{
+  "auth_mode": "jwt",
+  "oauth_provider": "microsoft",
+  "oauth_client_id": "your-client-id",
+  "oauth_discovery_url": "https://login.microsoftonline.com/your-tenant-id/v2.0/.well-known/openid-configuration"
 }
 ```
 
