@@ -22,6 +22,7 @@ type StoredToken struct {
 	ExpiresIn   int       `json:"expires_in"`
 	ObtainedAt  time.Time `json:"obtained_at"`
 	ExpiresAt   time.Time `json:"expires_at"`
+	Provider    string    `json:"provider,omitempty"`
 }
 
 func GetTokenPath(configDir string) string {
@@ -31,7 +32,7 @@ func GetTokenPath(configDir string) string {
 	return filepath.Join(configDir, "token.json")
 }
 
-func SaveToken(token *TokenResponse, configDir string) error {
+func SaveToken(token *TokenResponse, configDir string, provider string) error {
 	if configDir == "" {
 		configDir = GetConfigDir()
 	}
@@ -47,6 +48,7 @@ func SaveToken(token *TokenResponse, configDir string) error {
 		ExpiresIn:   token.ExpiresIn,
 		ObtainedAt:  time.Now(),
 		ExpiresAt:   time.Now().Add(time.Duration(token.ExpiresIn) * time.Second),
+		Provider:    provider,
 	}
 
 	data, err := json.MarshalIndent(stored, "", "  ")
@@ -86,6 +88,12 @@ func (t *StoredToken) IsValid() bool {
 }
 
 func (t *StoredToken) GetToken() string {
+	if t.Provider == "google" {
+		if t.IDToken != "" {
+			return t.IDToken
+		}
+	}
+
 	if t.AccessToken != "" {
 		return t.AccessToken
 	}

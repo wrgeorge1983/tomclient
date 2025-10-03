@@ -3,6 +3,8 @@ package tomapi
 import (
 	"fmt"
 	"net/http"
+
+	"tomclient/auth"
 )
 
 type AuthConfig interface {
@@ -73,8 +75,7 @@ func (c *Client) setAuthHeader(req *http.Request) error {
 func (c *Client) loadJWTToken() (string, error) {
 	configDir := c.AuthConfig.GetConfigDir()
 
-	tokenPath := getTokenPath(configDir)
-	token, err := loadStoredToken(tokenPath)
+	token, err := auth.LoadToken(configDir)
 	if err != nil {
 		return "", err
 	}

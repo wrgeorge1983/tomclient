@@ -12,6 +12,8 @@ import (
 	"os/exec"
 	"runtime"
 	"time"
+
+	"tomclient/auth/providers"
 )
 
 type OIDCDiscovery struct {
@@ -26,6 +28,7 @@ type OAuthFlow struct {
 	CodeVerifier string
 	State        string
 	Discovery    *OIDCDiscovery
+	Provider     providers.Provider
 }
 
 func discoverOIDCEndpoints(discoveryURL string) (*OIDCDiscovery, error) {
@@ -68,11 +71,17 @@ func NewOAuthFlow(config *Config) (*OAuthFlow, error) {
 		return nil, fmt.Errorf("failed to fetch OIDC discovery from %s: %w", config.OAuthDiscoveryURL, err)
 	}
 
+	provider, err := providers.GetProvider(config.OAuthProvider)
+	if err != nil {
+		return nil, err
+	}
+
 	return &OAuthFlow{
 		Config:       config,
 		CodeVerifier: verifier,
 		State:        state,
 		Discovery:    discovery,
+		Provider:     provider,
 	}, nil
 }
 
@@ -161,13 +170,14 @@ func (f *OAuthFlow) StartCallbackServer(ctx context.Context) (string, error) {
 }
 
 func (f *OAuthFlow) ExchangeCodeForToken(code string) (*TokenResponse, error) {
-	data := url.Values{
-		"grant_type":    {"authorization_code"},
-		"code":          {code},
-		"client_id":     {f.Config.OAuthClientID},
-		"redirect_uri":  {fmt.Sprintf("http://localhost:%d/callback", f.Config.OAuthRedirectPort)},
-		"code_verifier": {f.CodeVerifier},
-	}
+	redirectURI := fmt.Sprintf("http://localhost:%d/callback", f.Config.OAuthRedirectPort)
+	data := f.Provider.BuildTokenRequest(
+		code,
+		f.CodeVerifier,
+		f.Config.OAuthClientID,
+		f.Config.OAuthClientSecret,
+		redirectURI,
+	)
 
 	resp, err := http.PostForm(f.Discovery.TokenEndpoint, data)
 	if err != nil {
@@ -237,7 +247,7 @@ func Authenticate(config *Config) error {
 		return fmt.Errorf("failed to exchange code for token: %w", err)
 	}
 
-	if err := SaveToken(token, config.ConfigDir); err != nil {
+	if err := SaveToken(token, config.ConfigDir, config.OAuthProvider); err != nil {
 		return fmt.Errorf("failed to save token: %w", err)
 	}
 

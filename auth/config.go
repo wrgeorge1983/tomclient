@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"tomclient/auth/providers"
 )
 
 type AuthMode string
@@ -19,7 +21,9 @@ type Config struct {
 	APIURL            string   `json:"api_url,omitempty"`
 	AuthMode          AuthMode `json:"auth_mode"`
 	APIKey            string   `json:"api_key,omitempty"`
+	OAuthProvider     string   `json:"oauth_provider,omitempty"`
 	OAuthClientID     string   `json:"oauth_client_id,omitempty"`
+	OAuthClientSecret string   `json:"oauth_client_secret,omitempty"`
 	OAuthDiscoveryURL string   `json:"oauth_discovery_url,omitempty"`
 	OAuthRedirectPort int      `json:"oauth_redirect_port,omitempty"`
 	OAuthScopes       string   `json:"oauth_scopes,omitempty"`
@@ -70,6 +74,7 @@ func LoadConfig(configDir string) (*Config, error) {
 	cfg := &Config{
 		ConfigDir:         configDir,
 		AuthMode:          AuthModeNone,
+		OAuthProvider:     "oidc",
 		OAuthRedirectPort: 8899,
 		OAuthScopes:       "openid email profile",
 	}
@@ -98,8 +103,14 @@ func LoadConfig(configDir string) (*Config, error) {
 	if apiKey := os.Getenv("TOM_API_KEY"); apiKey != "" {
 		cfg.APIKey = apiKey
 	}
+	if provider := os.Getenv("TOM_OAUTH_PROVIDER"); provider != "" {
+		cfg.OAuthProvider = provider
+	}
 	if clientID := os.Getenv("TOM_OAUTH_CLIENT_ID"); clientID != "" {
 		cfg.OAuthClientID = clientID
+	}
+	if clientSecret := os.Getenv("TOM_OAUTH_CLIENT_SECRET"); clientSecret != "" {
+		cfg.OAuthClientSecret = clientSecret
 	}
 	if discoveryURL := os.Getenv("TOM_OAUTH_DISCOVERY_URL"); discoveryURL != "" {
 		cfg.OAuthDiscoveryURL = discoveryURL
@@ -144,6 +155,20 @@ func (c *Config) Validate() error {
 		if c.APIKey != "" {
 			fmt.Println("Warning: TOM_API_KEY is set but auth_mode is 'jwt' - API key will not be used")
 		}
+
+		provider, err := providers.GetProvider(c.OAuthProvider)
+		if err != nil {
+			return err
+		}
+
+		if provider.RequiresClientSecret() && c.OAuthClientSecret == "" {
+			return fmt.Errorf("OAuth provider '%s' requires client_secret but TOM_OAUTH_CLIENT_SECRET is not set", c.OAuthProvider)
+		}
+
+		if !provider.RequiresClientSecret() && c.OAuthClientSecret != "" {
+			fmt.Printf("Warning: TOM_OAUTH_CLIENT_SECRET is set but provider '%s' does not require it - client secret will be ignored\n", c.OAuthProvider)
+		}
+
 		return nil
 
 	default:

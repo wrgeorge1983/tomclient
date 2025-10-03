@@ -33,16 +33,37 @@ tomclient device router1 "show version"
 
 ### With OAuth
 
+**Using config.json (recommended):**
 ```bash
-export TOM_API_URL=http://localhost:8020
-export TOM_AUTH_MODE=jwt
-export TOM_OAUTH_CLIENT_ID=your-client-id
-export TOM_OAUTH_DISCOVERY_URL=https://accounts.google.com/.well-known/openid-configuration
+# Create ~/.tom/config.json
+cat > ~/.tom/config.json << EOF
+{
+  "api_url": "http://localhost:8020",
+  "auth_mode": "jwt",
+  "oauth_provider": "google",
+  "oauth_client_id": "xxx.apps.googleusercontent.com",
+  "oauth_client_secret": "GOCSPX-xxxxx",
+  "oauth_discovery_url": "https://accounts.google.com/.well-known/openid-configuration"
+}
+EOF
 
 # Authenticate (opens browser)
 tomclient auth login
 
 # Run commands
+tomclient device router1 "show version"
+```
+
+**Or using environment variables:**
+```bash
+export TOM_API_URL=http://localhost:8020
+export TOM_AUTH_MODE=jwt
+export TOM_OAUTH_PROVIDER=google
+export TOM_OAUTH_CLIENT_ID=xxx.apps.googleusercontent.com
+export TOM_OAUTH_CLIENT_SECRET=GOCSPX-xxxxx
+export TOM_OAUTH_DISCOVERY_URL=https://accounts.google.com/.well-known/openid-configuration
+
+tomclient auth login
 tomclient device router1 "show version"
 ```
 
@@ -171,15 +192,29 @@ The managed block in `/etc/hosts` looks like:
 
 ## Configuration
 
-### Config File
+### Config File (Recommended)
 
 Store settings in `~/.tom/config.json`:
 
+**Standard OIDC Provider (Duo, Okta, Keycloak, etc.):**
 ```json
 {
   "api_url": "http://localhost:8020",
   "auth_mode": "jwt",
+  "oauth_provider": "oidc",
   "oauth_client_id": "your-client-id",
+  "oauth_discovery_url": "https://your-provider/.well-known/openid-configuration"
+}
+```
+
+**Google Provider:**
+```json
+{
+  "api_url": "http://localhost:8020",
+  "auth_mode": "jwt",
+  "oauth_provider": "google",
+  "oauth_client_id": "xxx.apps.googleusercontent.com",
+  "oauth_client_secret": "GOCSPX-xxxxx",
   "oauth_discovery_url": "https://accounts.google.com/.well-known/openid-configuration"
 }
 ```
@@ -201,18 +236,22 @@ tomclient auth status
 
 Settings are loaded in this order (later overrides earlier):
 
-1. Config file (`~/.tom/config.json`)
-2. Environment variables (`TOM_*`)
-3. Command-line flags
+1. **Config file** (`~/.tom/config.json`) - Primary configuration
+2. **Environment variables** (`TOM_*`) - Override config file
+3. **Command-line flags** - Override both
 
 ### Environment Variables
+
+Environment variables can override config file settings:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `TOM_API_URL` | `http://localhost:8000` | Tom API server URL |
 | `TOM_AUTH_MODE` | `none` | Auth mode: `none`, `api_key`, or `jwt` |
 | `TOM_API_KEY` | - | API key (for `api_key` mode) |
+| `TOM_OAUTH_PROVIDER` | `oidc` | OAuth provider: `oidc` or `google` |
 | `TOM_OAUTH_CLIENT_ID` | - | OAuth client ID (for `jwt` mode) |
+| `TOM_OAUTH_CLIENT_SECRET` | - | OAuth client secret (required for Google) |
 | `TOM_OAUTH_DISCOVERY_URL` | - | OIDC discovery URL (for `jwt` mode) |
 | `TOM_OAUTH_REDIRECT_PORT` | `8899` | OAuth callback port |
 | `TOM_OAUTH_SCOPES` | `openid email profile` | OAuth scopes |
@@ -248,13 +287,32 @@ export TOM_API_KEY=your-secret-key
 
 ### OAuth (JWT)
 
-OAuth 2.0 with PKCE. Works with any OIDC-compliant provider (Google, Microsoft, Duo, Okta, etc.).
+OAuth 2.0 with PKCE. Supports multiple providers:
+- **Standard OIDC** (Duo, Okta, Keycloak, Auth0) - No client secret required
+- **Google** - Requires client secret
+
+**config.json (standard OIDC):**
+```json
+{
+  "auth_mode": "jwt",
+  "oauth_provider": "oidc",
+  "oauth_client_id": "your-client-id",
+  "oauth_discovery_url": "https://provider/.well-known/openid-configuration"
+}
+```
+
+**config.json (Google):**
+```json
+{
+  "auth_mode": "jwt",
+  "oauth_provider": "google",
+  "oauth_client_id": "xxx.apps.googleusercontent.com",
+  "oauth_client_secret": "GOCSPX-xxxxx",
+  "oauth_discovery_url": "https://accounts.google.com/.well-known/openid-configuration"
+}
+```
 
 ```bash
-export TOM_AUTH_MODE=jwt
-export TOM_OAUTH_CLIENT_ID=your-client-id
-export TOM_OAUTH_DISCOVERY_URL=https://provider/.well-known/openid-configuration
-
 tomclient auth login    # Authenticate via browser
 ```
 
@@ -296,10 +354,15 @@ mkdir -p ~/.tom
 cat > ~/.tom/config.json << EOF
 {
   "api_url": "http://localhost:8020",
-  "auth_mode": "api_key",
-  "api_key": "my-secret-key"
+  "auth_mode": "jwt",
+  "oauth_provider": "oidc",
+  "oauth_client_id": "your-client-id",
+  "oauth_discovery_url": "https://your-provider/.well-known/openid-configuration"
 }
 EOF
+
+# Authenticate
+tomclient auth login
 
 # Use it
 tomclient device router1 "show version"
@@ -307,11 +370,18 @@ tomclient device router1 "show version"
 
 ### OAuth Authentication
 
+**Using config.json (recommended):**
 ```bash
-# Configure
-export TOM_AUTH_MODE=jwt
-export TOM_OAUTH_CLIENT_ID=abc123
-export TOM_OAUTH_DISCOVERY_URL=https://accounts.google.com/.well-known/openid-configuration
+# Create config
+mkdir -p ~/.tom
+cat > ~/.tom/config.json << EOF
+{
+  "auth_mode": "jwt",
+  "oauth_provider": "oidc",
+  "oauth_client_id": "your-client-id",
+  "oauth_discovery_url": "https://your-provider/.well-known/openid-configuration"
+}
+EOF
 
 # Login
 tomclient auth login
@@ -322,6 +392,17 @@ tomclient auth status
 # Use authenticated commands
 tomclient device router1 "show version"
 tomclient export --filter=switches
+```
+
+**Or using environment variables:**
+```bash
+export TOM_AUTH_MODE=jwt
+export TOM_OAUTH_PROVIDER=oidc
+export TOM_OAUTH_CLIENT_ID=your-client-id
+export TOM_OAUTH_DISCOVERY_URL=https://your-provider/.well-known/openid-configuration
+
+tomclient auth login
+tomclient device router1 "show version"
 ```
 
 ## Error Handling
