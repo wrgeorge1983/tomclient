@@ -115,8 +115,9 @@ var authLogoutCmd = &cobra.Command{
 }
 
 var authRecordCmd = &cobra.Command{
-	Use:  "record",
-	Long: `Send a request to the Tom API to record JWT token for testing.`,
+	Use:   "record",
+	Short: "Record JWT token for testing",
+	Long:  `Send a request to the Tom API to record JWT token for testing.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 		cfg, err := auth.LoadConfig(configDir)
@@ -128,6 +129,7 @@ var authRecordCmd = &cobra.Command{
 			return err
 		}
 
+		client := createClient(getAPIURL(cfg), cfg)
 		if err := client.RecordJWT(); err != nil {
 			return fmt.Errorf("failed to record JWT: %w", err)
 		}
