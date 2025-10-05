@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/spf13/cobra"
 	"tomclient/auth"
+
+	"github.com/spf13/cobra"
 )
 
 var authCmd = &cobra.Command{
@@ -113,9 +114,33 @@ var authLogoutCmd = &cobra.Command{
 	},
 }
 
+var authRecordCmd = &cobra.Command{
+	Use:  "record",
+	Long: `Send a request to the Tom API to record JWT token for testing.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+		cfg, err := auth.LoadConfig(configDir)
+		if err != nil {
+			return fmt.Errorf("failed to load config: %w", err)
+		}
+
+		if err := cfg.Validate(); err != nil {
+			return err
+		}
+
+		if err := client.RecordJWT(); err != nil {
+			return fmt.Errorf("failed to record JWT: %w", err)
+		}
+
+		fmt.Println("✅ JWT recorded successfully")
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(authCmd)
 	authCmd.AddCommand(authLoginCmd)
 	authCmd.AddCommand(authStatusCmd)
 	authCmd.AddCommand(authLogoutCmd)
+	authCmd.AddCommand(authRecordCmd)
 }
