@@ -18,6 +18,7 @@ const (
 )
 
 type Config struct {
+	Include           string   `json:"include,omitempty"` // exclusive with all other fields
 	APIURL            string   `json:"api_url,omitempty"`
 	AuthMode          AuthMode `json:"auth_mode"`
 	APIKey            string   `json:"api_key,omitempty"`
@@ -91,6 +92,19 @@ func LoadConfig(configDir string) (*Config, error) {
 		}
 		if err := json.Unmarshal(data, cfg); err != nil {
 			return nil, fmt.Errorf("failed to parse config file: %w", err)
+		}
+	}
+	if cfg.Include != "" {
+		if cfg.Include == "config.json" {
+			return nil, fmt.Errorf("config include cannot be 'config.json'")
+		}
+		includePath := filepath.Join(cfg.ConfigDir, cfg.Include)
+		data, err := os.ReadFile(includePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read included config file '%s': %w", cfg.Include, err)
+		}
+		if err := json.Unmarshal(data, cfg); err != nil {
+			return nil, fmt.Errorf("failed to parse included config file '%s': %w", cfg.Include, err)
 		}
 	}
 
