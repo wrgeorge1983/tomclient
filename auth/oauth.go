@@ -76,6 +76,12 @@ func NewOAuthFlow(config *Config) (*OAuthFlow, error) {
 		return nil, err
 	}
 
+	if config.OAuthUseRefresh {
+		if gp, ok := provider.(*providers.GoogleProvider); ok {
+			gp.UseRefreshToken = true
+		}
+	}
+
 	return &OAuthFlow{
 		Config:       config,
 		CodeVerifier: verifier,

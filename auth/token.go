@@ -9,20 +9,22 @@ import (
 )
 
 type TokenResponse struct {
-	AccessToken string `json:"access_token"`
-	IDToken     string `json:"id_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int    `json:"expires_in"`
+	AccessToken  string `json:"access_token"`
+	IDToken      string `json:"id_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int    `json:"expires_in"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 type StoredToken struct {
-	AccessToken string    `json:"access_token"`
-	IDToken     string    `json:"id_token"`
-	TokenType   string    `json:"token_type"`
-	ExpiresIn   int       `json:"expires_in"`
-	ObtainedAt  time.Time `json:"obtained_at"`
-	ExpiresAt   time.Time `json:"expires_at"`
-	Provider    string    `json:"provider,omitempty"`
+	AccessToken  string    `json:"access_token"`
+	IDToken      string    `json:"id_token"`
+	TokenType    string    `json:"token_type"`
+	ExpiresIn    int       `json:"expires_in"`
+	ObtainedAt   time.Time `json:"obtained_at"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	RefreshToken string    `json:"refresh_token,omitempty"`
+	Provider     string    `json:"provider,omitempty"`
 }
 
 func GetTokenPath(configDir string) string {
@@ -42,13 +44,14 @@ func SaveToken(token *TokenResponse, configDir string, provider string) error {
 	}
 
 	stored := StoredToken{
-		AccessToken: token.AccessToken,
-		IDToken:     token.IDToken,
-		TokenType:   token.TokenType,
-		ExpiresIn:   token.ExpiresIn,
-		ObtainedAt:  time.Now(),
-		ExpiresAt:   time.Now().Add(time.Duration(token.ExpiresIn) * time.Second),
-		Provider:    provider,
+		AccessToken:  token.AccessToken,
+		IDToken:      token.IDToken,
+		TokenType:    token.TokenType,
+		ExpiresIn:    token.ExpiresIn,
+		ObtainedAt:   time.Now(),
+		ExpiresAt:    time.Now().Add(time.Duration(token.ExpiresIn) * time.Second),
+		Provider:     provider,
+		RefreshToken: token.RefreshToken,
 	}
 
 	data, err := json.MarshalIndent(stored, "", "  ")

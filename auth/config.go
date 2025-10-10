@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"tomclient/auth/providers"
 )
@@ -28,6 +29,7 @@ type Config struct {
 	OAuthDiscoveryURL string   `json:"oauth_discovery_url,omitempty"`
 	OAuthRedirectPort int      `json:"oauth_redirect_port,omitempty"`
 	OAuthScopes       string   `json:"oauth_scopes,omitempty"`
+	OAuthUseRefresh   bool     `json:"oauth_use_refresh,omitempty"`
 	ConfigDir         string   `json:"-"`
 }
 
@@ -134,6 +136,16 @@ func LoadConfig(configDir string) (*Config, error) {
 	}
 	if scopes := os.Getenv("TOM_OAUTH_SCOPES"); scopes != "" {
 		cfg.OAuthScopes = scopes
+	}
+	if useRefresh := os.Getenv("TOM_OAUTH_USE_REFRESH"); useRefresh != "" {
+		if useRefresh == "1" || useRefresh == "true" || useRefresh == "TRUE" {
+			cfg.OAuthUseRefresh = true
+			if !strings.Contains(cfg.OAuthScopes, "offline_access") {
+				cfg.OAuthScopes += " offline_access"
+			}
+		} else {
+			cfg.OAuthUseRefresh = false
+		}
 	}
 
 	return cfg, nil
