@@ -88,16 +88,10 @@ func (t *StoredToken) IsValid() bool {
 }
 
 func (t *StoredToken) GetToken() string {
-	if t.Provider == "google" || t.Provider == "microsoft" {
-		if t.IDToken != "" {
-			return t.IDToken
-		}
+	if t.IDToken != "" {
+		return t.IDToken
 	}
-
-	if t.AccessToken != "" {
-		return t.AccessToken
-	}
-	return t.IDToken
+	return t.AccessToken
 }
 
 func DeleteToken(configDir string) error {
