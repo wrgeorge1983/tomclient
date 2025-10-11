@@ -145,8 +145,8 @@ func LoadConfig(configDir string) (*Config, error) {
 		}
 	}
 
-	// Ensure offline_access is requested when refresh is enabled, regardless of source
-	if cfg.OAuthUseRefresh && !strings.Contains(cfg.OAuthScopes, "offline_access") {
+	// Ensure offline_access is requested when refresh is enabled (not for Google)
+	if cfg.OAuthUseRefresh && cfg.OAuthProvider != "google" && !strings.Contains(cfg.OAuthScopes, "offline_access") {
 		if cfg.OAuthScopes == "" {
 			cfg.OAuthScopes = "offline_access"
 		} else {
@@ -195,10 +195,6 @@ func (c *Config) Validate() error {
 
 		if provider.RequiresClientSecret() && c.OAuthClientSecret == "" {
 			return fmt.Errorf("OAuth provider '%s' requires client_secret but TOM_OAUTH_CLIENT_SECRET is not set", c.OAuthProvider)
-		}
-
-		if !provider.RequiresClientSecret() && c.OAuthClientSecret != "" {
-			fmt.Printf("Warning: TOM_OAUTH_CLIENT_SECRET is set but provider '%s' does not require it - client secret will be ignored\n", c.OAuthProvider)
 		}
 
 		return nil

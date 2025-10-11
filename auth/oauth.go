@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os/exec"
 	"runtime"
-	"strings"
 	"time"
 
 	"tomclient/auth/providers"
@@ -103,23 +102,13 @@ func generateState() (string, error) {
 func (f *OAuthFlow) GetAuthURL() string {
 	challenge := GenerateCodeChallenge(f.CodeVerifier)
 
-	// Ensure offline_access is present when refresh is enabled
-	scopes := f.Config.OAuthScopes
-	if f.Config.OAuthUseRefresh && !strings.Contains(scopes, "offline_access") {
-		if scopes == "" {
-			scopes = "offline_access"
-		} else {
-			scopes = scopes + " offline_access"
-		}
-	}
-
 	params := url.Values{
 		"response_type":         {"code"},
 		"client_id":             {f.Config.OAuthClientID},
 		"redirect_uri":          {fmt.Sprintf("http://localhost:%d/callback", f.Config.OAuthRedirectPort)},
 		"code_challenge":        {challenge},
 		"code_challenge_method": {"S256"},
-		"scope":                 {scopes},
+		"scope":                 {f.Config.OAuthScopes},
 		"state":                 {f.State},
 	}
 
@@ -277,6 +266,11 @@ func openBrowser(url string) error {
 }
 
 func Authenticate(config *Config) error {
+	// Always clear any previously stored tokens before a fresh login
+	if err := DeleteToken(config.ConfigDir); err != nil {
+		return fmt.Errorf("failed to clear existing token: %w", err)
+	}
+
 	flow, err := NewOAuthFlow(config)
 	if err != nil {
 		return fmt.Errorf("failed to initialize OAuth flow: %w", err)
