@@ -1,10 +1,12 @@
 package auth
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -117,15 +119,45 @@ func LoadToken(configDir string) (*StoredToken, error) {
 	return &token, nil
 }
 
+// IsValid returns whether the currently used token is valid.
+// For OIDC we use the ID token; validate by its exp when present.
 func (t *StoredToken) IsValid() bool {
+	if t.IDToken != "" {
+		if exp, ok := parseJWTExp(t.IDToken); ok {
+			return time.Now().Before(exp.Add(-60 * time.Second))
+		}
+		// If we cannot parse, be conservative and treat as expired
+		return false
+	}
+	// Fallback: access token expiry
 	return time.Now().Before(t.ExpiresAt.Add(-60 * time.Second))
 }
 
+// GetToken returns the ID token; we no longer fall back to access tokens.
 func (t *StoredToken) GetToken() string {
-	if t.IDToken != "" {
-		return t.IDToken
+	return t.IDToken
+}
+
+// parseJWTExp extracts the exp claim from a JWT without verification.
+func parseJWTExp(jwt string) (time.Time, bool) {
+	parts := strings.Split(jwt, ".")
+	if len(parts) < 2 {
+		return time.Time{}, false
 	}
-	return t.AccessToken
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return time.Time{}, false
+	}
+	var claims struct {
+		Exp int64 `json:"exp"`
+	}
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return time.Time{}, false
+	}
+	if claims.Exp == 0 {
+		return time.Time{}, false
+	}
+	return time.Unix(claims.Exp, 0), true
 }
 
 func DeleteToken(configDir string) error {

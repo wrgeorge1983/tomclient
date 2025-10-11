@@ -64,6 +64,7 @@ func (c *Client) setAuthHeader(req *http.Request) error {
 		if err != nil {
 			return err
 		}
+		// Always use ID token for OIDC-backed auth
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 		return nil
 
@@ -75,25 +76,30 @@ func (c *Client) setAuthHeader(req *http.Request) error {
 func (c *Client) loadJWTToken() (string, error) {
 	configDir := c.AuthConfig.GetConfigDir()
 
-	token, err := auth.LoadToken(configDir)
+	t, err := auth.LoadToken(configDir)
 	if err != nil {
 		return "", err
 	}
 
-	if token.IsValid() {
-		return token.GetToken(), nil
+	// Require an ID token for OIDC
+	if t.IDToken == "" {
+		return "", fmt.Errorf("no id_token present; ensure 'openid' scope and re-authenticate")
+	}
+
+	if t.IsValid() { // validates ID token exp
+		return t.IDToken, nil
 	}
 
 	// Attempt auto-refresh if enabled and we have a refresh token
 	cfg, cfgErr := auth.LoadConfig(configDir)
-	if cfgErr == nil && cfg.OAuthUseRefresh && token.RefreshToken != "" {
-		newTok, rerr := auth.RefreshAccessToken(cfg, token.RefreshToken)
+	if cfgErr == nil && cfg.OAuthUseRefresh && t.RefreshToken != "" {
+		newTok, rerr := auth.RefreshAccessToken(cfg, t.RefreshToken)
 		if rerr == nil {
 			// Persist tokens (handles rotation)
 			if serr := auth.SaveToken(newTok, cfg.ConfigDir, cfg.OAuthProvider); serr == nil {
-				// Reload and return
-				if latest, lerr := auth.LoadToken(configDir); lerr == nil {
-					return latest.GetToken(), nil
+				// Reload and return ID token
+				if latest, lerr := auth.LoadToken(configDir); lerr == nil && latest.IDToken != "" && latest.IsValid() {
+					return latest.IDToken, nil
 				}
 			}
 		}
