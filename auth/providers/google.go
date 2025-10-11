@@ -17,7 +17,7 @@ func (p *GoogleProvider) RequiresClientSecret() bool {
 }
 
 func (p *GoogleProvider) BuildTokenRequest(code, verifier, clientID, clientSecret, redirectURI string) url.Values {
-	vals := url.Values{
+	return url.Values{
 		"grant_type":    {"authorization_code"},
 		"code":          {code},
 		"client_id":     {clientID},
@@ -25,13 +25,6 @@ func (p *GoogleProvider) BuildTokenRequest(code, verifier, clientID, clientSecre
 		"redirect_uri":  {redirectURI},
 		"code_verifier": {verifier},
 	}
-
-	if p.UseRefreshToken {
-		vals.Set("access_type", "offline")
-		vals.Set("prompt", "consent")
-	}
-
-	return vals
 }
 
 func (p *GoogleProvider) BuildRefreshRequest(refreshToken, clientID, clientSecret string) url.Values {
@@ -41,4 +34,13 @@ func (p *GoogleProvider) BuildRefreshRequest(refreshToken, clientID, clientSecre
 		"client_id":     {clientID},
 		"client_secret": {clientSecret},
 	}
+}
+
+func (p *GoogleProvider) AuthURLParams() url.Values {
+	vals := url.Values{}
+	if p.UseRefreshToken {
+		vals.Set("access_type", "offline")
+		vals.Set("prompt", "consent")
+	}
+	return vals
 }

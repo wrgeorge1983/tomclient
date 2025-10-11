@@ -88,6 +88,17 @@ var authStatusCmd = &cobra.Command{
 			} else {
 				fmt.Println("Status: ❌ Token expired - run 'tomclient auth login'")
 			}
+
+			// Refresh token status
+			if token.RefreshToken == "" {
+				fmt.Println("Refresh Token: absent")
+			} else if token.RefreshExpiresAt.IsZero() {
+				fmt.Println("Refresh Token: present (expiry: unknown)")
+			} else if time.Now().Before(token.RefreshExpiresAt) {
+				fmt.Printf("Refresh Token: present (expires in %v)\n", time.Until(token.RefreshExpiresAt).Round(time.Second))
+			} else {
+				fmt.Println("Refresh Token: present (expired)")
+			}
 		}
 
 		return nil

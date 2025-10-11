@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
 	"tomclient/auth/providers"
@@ -102,14 +103,34 @@ func generateState() (string, error) {
 func (f *OAuthFlow) GetAuthURL() string {
 	challenge := GenerateCodeChallenge(f.CodeVerifier)
 
+	// Ensure offline_access is present when refresh is enabled
+	scopes := f.Config.OAuthScopes
+	if f.Config.OAuthUseRefresh && !strings.Contains(scopes, "offline_access") {
+		if scopes == "" {
+			scopes = "offline_access"
+		} else {
+			scopes = scopes + " offline_access"
+		}
+	}
+
 	params := url.Values{
 		"response_type":         {"code"},
 		"client_id":             {f.Config.OAuthClientID},
 		"redirect_uri":          {fmt.Sprintf("http://localhost:%d/callback", f.Config.OAuthRedirectPort)},
 		"code_challenge":        {challenge},
 		"code_challenge_method": {"S256"},
-		"scope":                 {f.Config.OAuthScopes},
+		"scope":                 {scopes},
 		"state":                 {f.State},
+	}
+
+	// Merge any provider-specific auth URL parameters (e.g., Google offline consent)
+	if p, ok := f.Provider.(interface{ AuthURLParams() url.Values }); ok {
+		extra := p.AuthURLParams()
+		for k, vs := range extra {
+			for _, v := range vs {
+				params.Add(k, v)
+			}
+		}
 	}
 
 	return fmt.Sprintf("%s?%s", f.Discovery.AuthorizationEndpoint, params.Encode())
@@ -202,6 +223,41 @@ func (f *OAuthFlow) ExchangeCodeForToken(code string) (*TokenResponse, error) {
 		return nil, fmt.Errorf("failed to parse token response: %w", err)
 	}
 
+	return &token, nil
+}
+
+// RefreshAccessToken exchanges a refresh_token for a new access/id token
+func RefreshAccessToken(config *Config, refreshToken string) (*TokenResponse, error) {
+	if refreshToken == "" {
+		return nil, fmt.Errorf("no refresh token available")
+	}
+
+	discovery, err := discoverOIDCEndpoints(config.OAuthDiscoveryURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch OIDC discovery from %s: %w", config.OAuthDiscoveryURL, err)
+	}
+
+	provider, err := providers.GetProvider(config.OAuthProvider)
+	if err != nil {
+		return nil, err
+	}
+
+	data := provider.BuildRefreshRequest(refreshToken, config.OAuthClientID, config.OAuthClientSecret)
+	resp, err := http.PostForm(discovery.TokenEndpoint, data)
+	if err != nil {
+		return nil, fmt.Errorf("refresh request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("token refresh failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var token TokenResponse
+	if err := json.Unmarshal(body, &token); err != nil {
+		return nil, fmt.Errorf("failed to parse refresh response: %w", err)
+	}
 	return &token, nil
 }
 

@@ -23,3 +23,15 @@ func (p *OIDCProvider) BuildTokenRequest(code, verifier, clientID, clientSecret,
 		"code_verifier": {verifier},
 	}
 }
+
+func (p *OIDCProvider) BuildRefreshRequest(refreshToken, clientID, clientSecret string) url.Values {
+	return url.Values{
+		"grant_type":    {"refresh_token"},
+		"refresh_token": {refreshToken},
+		"client_id":     {clientID},
+	}
+}
+
+func (p *OIDCProvider) AuthURLParams() url.Values {
+	return url.Values{}
+}

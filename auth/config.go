@@ -140,11 +140,17 @@ func LoadConfig(configDir string) (*Config, error) {
 	if useRefresh := os.Getenv("TOM_OAUTH_USE_REFRESH"); useRefresh != "" {
 		if useRefresh == "1" || useRefresh == "true" || useRefresh == "TRUE" {
 			cfg.OAuthUseRefresh = true
-			if !strings.Contains(cfg.OAuthScopes, "offline_access") {
-				cfg.OAuthScopes += " offline_access"
-			}
 		} else {
 			cfg.OAuthUseRefresh = false
+		}
+	}
+
+	// Ensure offline_access is requested when refresh is enabled, regardless of source
+	if cfg.OAuthUseRefresh && !strings.Contains(cfg.OAuthScopes, "offline_access") {
+		if cfg.OAuthScopes == "" {
+			cfg.OAuthScopes = "offline_access"
+		} else {
+			cfg.OAuthScopes += " offline_access"
 		}
 	}
 

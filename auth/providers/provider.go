@@ -8,6 +8,8 @@ import (
 type Provider interface {
 	Name() string
 	BuildTokenRequest(code, verifier, clientID, clientSecret, redirectURI string) url.Values
+	BuildRefreshRequest(refreshToken, clientID, clientSecret string) url.Values
+	AuthURLParams() url.Values
 	RequiresClientSecret() bool
 }
 

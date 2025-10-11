@@ -9,22 +9,26 @@ import (
 )
 
 type TokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	IDToken      string `json:"id_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in"`
-	RefreshToken string `json:"refresh_token,omitempty"`
+	AccessToken           string `json:"access_token"`
+	IDToken               string `json:"id_token"`
+	TokenType             string `json:"token_type"`
+	ExpiresIn             int    `json:"expires_in"`
+	RefreshToken          string `json:"refresh_token,omitempty"`
+	RefreshTokenExpiresIn int    `json:"refresh_token_expires_in,omitempty"`
+	RefreshExpiresIn      int    `json:"refresh_expires_in,omitempty"`
 }
 
 type StoredToken struct {
-	AccessToken  string    `json:"access_token"`
-	IDToken      string    `json:"id_token"`
-	TokenType    string    `json:"token_type"`
-	ExpiresIn    int       `json:"expires_in"`
-	ObtainedAt   time.Time `json:"obtained_at"`
-	ExpiresAt    time.Time `json:"expires_at"`
-	RefreshToken string    `json:"refresh_token,omitempty"`
-	Provider     string    `json:"provider,omitempty"`
+	AccessToken      string    `json:"access_token"`
+	IDToken          string    `json:"id_token"`
+	TokenType        string    `json:"token_type"`
+	ExpiresIn        int       `json:"expires_in"`
+	ObtainedAt       time.Time `json:"obtained_at"`
+	ExpiresAt        time.Time `json:"expires_at"`
+	RefreshToken     string    `json:"refresh_token,omitempty"`
+	RefreshExpiresIn int       `json:"refresh_expires_in,omitempty"`
+	RefreshExpiresAt time.Time `json:"refresh_expires_at,omitempty"`
+	Provider         string    `json:"provider,omitempty"`
 }
 
 func GetTokenPath(configDir string) string {
@@ -43,15 +47,42 @@ func SaveToken(token *TokenResponse, configDir string, provider string) error {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
+	// Preserve existing refresh_token if server does not return a new one
+	var existingRefresh string
+	var existingRefreshExpiresAt time.Time
+	if existing, err := LoadToken(configDir); err == nil && existing != nil {
+		existingRefresh = existing.RefreshToken
+		existingRefreshExpiresAt = existing.RefreshExpiresAt
+	}
+
+	refresh := token.RefreshToken
+	if refresh == "" {
+		refresh = existingRefresh
+	}
+
+	// Determine refresh expiry
+	refreshExpiresIn := token.RefreshTokenExpiresIn
+	if refreshExpiresIn == 0 {
+		refreshExpiresIn = token.RefreshExpiresIn
+	}
+	var refreshExpiresAt time.Time
+	if refreshExpiresIn > 0 {
+		refreshExpiresAt = time.Now().Add(time.Duration(refreshExpiresIn) * time.Second)
+	} else if refresh != "" && refresh == existingRefresh {
+		refreshExpiresAt = existingRefreshExpiresAt
+	}
+
 	stored := StoredToken{
-		AccessToken:  token.AccessToken,
-		IDToken:      token.IDToken,
-		TokenType:    token.TokenType,
-		ExpiresIn:    token.ExpiresIn,
-		ObtainedAt:   time.Now(),
-		ExpiresAt:    time.Now().Add(time.Duration(token.ExpiresIn) * time.Second),
-		Provider:     provider,
-		RefreshToken: token.RefreshToken,
+		AccessToken:      token.AccessToken,
+		IDToken:          token.IDToken,
+		TokenType:        token.TokenType,
+		ExpiresIn:        token.ExpiresIn,
+		ObtainedAt:       time.Now(),
+		ExpiresAt:        time.Now().Add(time.Duration(token.ExpiresIn) * time.Second),
+		Provider:         provider,
+		RefreshToken:     refresh,
+		RefreshExpiresIn: refreshExpiresIn,
+		RefreshExpiresAt: refreshExpiresAt,
 	}
 
 	data, err := json.MarshalIndent(stored, "", "  ")

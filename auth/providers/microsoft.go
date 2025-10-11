@@ -23,3 +23,15 @@ func (p *MicrosoftProvider) BuildTokenRequest(code, verifier, clientID, clientSe
 		"code_verifier": {verifier},
 	}
 }
+
+func (p *MicrosoftProvider) BuildRefreshRequest(refreshToken, clientID, clientSecret string) url.Values {
+	return url.Values{
+		"grant_type":    {"refresh_token"},
+		"refresh_token": {refreshToken},
+		"client_id":     {clientID},
+	}
+}
+
+func (p *MicrosoftProvider) AuthURLParams() url.Values {
+	return url.Values{}
+}

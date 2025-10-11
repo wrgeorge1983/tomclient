@@ -80,9 +80,24 @@ func (c *Client) loadJWTToken() (string, error) {
 		return "", err
 	}
 
-	if !token.IsValid() {
-		return "", fmt.Errorf("token expired - run 'tomclient auth login' to re-authenticate")
+	if token.IsValid() {
+		return token.GetToken(), nil
 	}
 
-	return token.GetToken(), nil
+	// Attempt auto-refresh if enabled and we have a refresh token
+	cfg, cfgErr := auth.LoadConfig(configDir)
+	if cfgErr == nil && cfg.OAuthUseRefresh && token.RefreshToken != "" {
+		newTok, rerr := auth.RefreshAccessToken(cfg, token.RefreshToken)
+		if rerr == nil {
+			// Persist tokens (handles rotation)
+			if serr := auth.SaveToken(newTok, cfg.ConfigDir, cfg.OAuthProvider); serr == nil {
+				// Reload and return
+				if latest, lerr := auth.LoadToken(configDir); lerr == nil {
+					return latest.GetToken(), nil
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("token expired - run 'tomclient auth login' to re-authenticate")
 }
