@@ -13,11 +13,13 @@ var (
 	apiURL    string
 	configDir string
 	client    *tomapi.Client
+	Version   = "0.1.0"
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "tomclient",
-	Short: "Tom Smykowski network automation client",
+	Use:     "tomclient",
+	Short:   "Tom Smykowski network automation client",
+	Version: Version,
 	Long: `A CLI client for the Tom Smykowski network automation broker service.
 
 Features:

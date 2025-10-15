@@ -480,6 +480,26 @@ See [AUTOCOMPLETE.md](AUTOCOMPLETE.md) for complete setup guide, troubleshooting
 go build
 ```
 
+### Versioning
+
+This project uses [bump-my-version](https://github.com/callowayproject/bump-my-version) for version management.
+
+```bash
+# Install bump-my-version
+pip install bump-my-version
+
+# Bump patch version (0.1.0 -> 0.1.1)
+bump-my-version bump patch
+
+# Bump minor version (0.1.0 -> 0.2.0)
+bump-my-version bump minor
+
+# Bump major version (0.1.0 -> 1.0.0)
+bump-my-version bump major
+```
+
+Versions are maintained independently from the Tom server. Current version is stored in `cmd/root.go`.
+
 ### Test with Local Config
 
 ```bash
