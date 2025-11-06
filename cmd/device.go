@@ -14,7 +14,6 @@ var (
 	deviceUser         string
 	devicePass         string
 	deviceCache        bool
-	deviceNoCache      bool
 	deviceCacheTTL     int
 	deviceCacheRefresh bool
 )
@@ -56,12 +55,9 @@ Supports credential override and timeout configuration.`,
 
 		// Determine cache settings
 		useCache := cfg.CacheEnabled // default from config
-		// Command-line flags override config
+		// Command-line flag overrides config if explicitly set
 		if cmd.Flags().Changed("cache") {
 			useCache = deviceCache
-		}
-		if cmd.Flags().Changed("no-cache") {
-			useCache = !deviceNoCache
 		}
 
 		// Set cache TTL
@@ -98,14 +94,16 @@ func init() {
 	deviceCmd.Flags().IntVarP(&deviceTimeout, "timeout", "t", 10, "Command timeout in seconds")
 	deviceCmd.Flags().BoolVarP(&deviceWait, "wait", "w", true, "Wait for command completion")
 	deviceCmd.Flags().BoolVarP(&deviceRaw, "raw", "r", true, "Return raw command output")
-	deviceCmd.Flags().StringVarP(&deviceUser, "username", "u", "", "Override username for authentication")
-	deviceCmd.Flags().StringVarP(&devicePass, "password", "p", "", "Override password for authentication")
 
-	// Cache control flags
-	deviceCmd.Flags().BoolVarP(&deviceCache, "cache", "c", false, "Enable caching (overrides config default)")
-	deviceCmd.Flags().BoolVarP(&deviceNoCache, "no-cache", "C", false, "Disable caching (overrides config default)")
+	// Cache control flags (grouped together)
+	// Note: default here doesn't matter since we check if it was changed
+	deviceCmd.Flags().BoolVarP(&deviceCache, "cache", "c", false, "Enable/disable caching (use --cache=false or -c=false to disable)")
 	deviceCmd.Flags().IntVarP(&deviceCacheTTL, "cache-ttl", "T", 0, "Cache TTL in seconds (0 uses server default)")
 	deviceCmd.Flags().BoolVarP(&deviceCacheRefresh, "cache-refresh", "R", false, "Force refresh cached result")
+
+	// Authentication flags
+	deviceCmd.Flags().StringVarP(&deviceUser, "username", "u", "", "Override username for authentication")
+	deviceCmd.Flags().StringVarP(&devicePass, "password", "p", "", "Override password for authentication")
 
 	// Mark password flag as sensitive (won't show in help examples)
 	deviceCmd.Flags().MarkHidden("password")
