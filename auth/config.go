@@ -30,6 +30,8 @@ type Config struct {
 	OAuthRedirectPort int      `json:"oauth_redirect_port,omitempty"`
 	OAuthScopes       string   `json:"oauth_scopes,omitempty"`
 	OAuthUseRefresh   bool     `json:"oauth_use_refresh,omitempty"`
+	CacheEnabled      bool     `json:"cache_enabled,omitempty"`
+	CacheTTL          int      `json:"cache_ttl,omitempty"`
 	ConfigDir         string   `json:"-"`
 }
 
@@ -43,6 +45,14 @@ func (c *Config) GetAPIKey() string {
 
 func (c *Config) GetConfigDir() string {
 	return c.ConfigDir
+}
+
+func (c *Config) GetCacheEnabled() bool {
+	return c.CacheEnabled
+}
+
+func (c *Config) GetCacheTTL() int {
+	return c.CacheTTL
 }
 
 func GetConfigDir() string {
@@ -80,6 +90,8 @@ func LoadConfig(configDir string) (*Config, error) {
 		OAuthProvider:     "oidc",
 		OAuthRedirectPort: 8899,
 		OAuthScopes:       "openid email profile",
+		CacheEnabled:      true, // Enable caching by default
+		CacheTTL:          300,  // 5 minutes default TTL
 	}
 
 	if cfg.ConfigDir == "" {
@@ -143,6 +155,16 @@ func LoadConfig(configDir string) (*Config, error) {
 		} else {
 			cfg.OAuthUseRefresh = false
 		}
+	}
+	if cacheEnabled := os.Getenv("TOM_CACHE_ENABLED"); cacheEnabled != "" {
+		if cacheEnabled == "0" || cacheEnabled == "false" || cacheEnabled == "FALSE" {
+			cfg.CacheEnabled = false
+		} else {
+			cfg.CacheEnabled = true
+		}
+	}
+	if cacheTTL := os.Getenv("TOM_CACHE_TTL"); cacheTTL != "" {
+		fmt.Sscanf(cacheTTL, "%d", &cfg.CacheTTL)
 	}
 
 	// Ensure offline_access is requested when refresh is enabled (not for Google)

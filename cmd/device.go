@@ -8,11 +8,15 @@ import (
 )
 
 var (
-	deviceTimeout int
-	deviceWait    bool
-	deviceRaw     bool
-	deviceUser    string
-	devicePass    string
+	deviceTimeout      int
+	deviceWait         bool
+	deviceRaw          bool
+	deviceUser         string
+	devicePass         string
+	deviceCache        bool
+	deviceNoCache      bool
+	deviceCacheTTL     int
+	deviceCacheRefresh bool
 )
 
 var deviceCmd = &cobra.Command{
@@ -47,6 +51,27 @@ Supports credential override and timeout configuration.`,
 		deviceName := args[0]
 		command := args[1]
 
+		// Load config to get cache defaults
+		cfg, _ := auth.LoadConfig(configDir)
+
+		// Determine cache settings
+		useCache := cfg.CacheEnabled // default from config
+		// Command-line flags override config
+		if cmd.Flags().Changed("cache") {
+			useCache = deviceCache
+		}
+		if cmd.Flags().Changed("no-cache") {
+			useCache = !deviceNoCache
+		}
+
+		// Set cache TTL
+		var cacheTTL *int
+		if cmd.Flags().Changed("cache-ttl") && deviceCacheTTL > 0 {
+			cacheTTL = &deviceCacheTTL
+		} else if cfg.CacheTTL > 0 && useCache {
+			cacheTTL = &cfg.CacheTTL
+		}
+
 		var result string
 		var err error
 
@@ -54,9 +79,11 @@ Supports credential override and timeout configuration.`,
 			result, err = client.SendDeviceCommandWithAuth(
 				deviceName, command, deviceUser, devicePass,
 				deviceWait, deviceRaw, deviceTimeout,
+				useCache, cacheTTL, deviceCacheRefresh,
 			)
 		} else {
-			result, err = client.SendDeviceCommand(deviceName, command, deviceWait, deviceRaw)
+			result, err = client.SendDeviceCommand(deviceName, command, deviceWait, deviceRaw,
+				useCache, cacheTTL, deviceCacheRefresh)
 		}
 
 		handleError(err)
@@ -73,6 +100,12 @@ func init() {
 	deviceCmd.Flags().BoolVarP(&deviceRaw, "raw", "r", true, "Return raw command output")
 	deviceCmd.Flags().StringVarP(&deviceUser, "username", "u", "", "Override username for authentication")
 	deviceCmd.Flags().StringVarP(&devicePass, "password", "p", "", "Override password for authentication")
+
+	// Cache control flags
+	deviceCmd.Flags().BoolVarP(&deviceCache, "cache", "c", false, "Enable caching (overrides config default)")
+	deviceCmd.Flags().BoolVarP(&deviceNoCache, "no-cache", "C", false, "Disable caching (overrides config default)")
+	deviceCmd.Flags().IntVarP(&deviceCacheTTL, "cache-ttl", "T", 0, "Cache TTL in seconds (0 uses server default)")
+	deviceCmd.Flags().BoolVarP(&deviceCacheRefresh, "cache-refresh", "R", false, "Force refresh cached result")
 
 	// Mark password flag as sensitive (won't show in help examples)
 	deviceCmd.Flags().MarkHidden("password")

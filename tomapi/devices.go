@@ -9,13 +9,22 @@ import (
 )
 
 // SendDeviceCommand sends a command to a device and returns the result
-func (c *Client) SendDeviceCommand(deviceName, command string, wait bool, rawOutput bool) (string, error) {
+func (c *Client) SendDeviceCommand(deviceName, command string, wait bool, rawOutput bool, useCache bool, cacheTTL *int, cacheRefresh bool) (string, error) {
 	apiURL := fmt.Sprintf("%s/api/device/%s/send_command", c.BaseURL, deviceName)
 
 	params := url.Values{}
 	params.Add("command", command)
 	if wait {
 		params.Add("wait", "true")
+		if useCache {
+			params.Add("use_cache", "true")
+		}
+		if cacheTTL != nil {
+			params.Add("cache_ttl", fmt.Sprintf("%d", *cacheTTL))
+		}
+		if cacheRefresh {
+			params.Add("cache_refresh", "true")
+		}
 	}
 	if rawOutput {
 		params.Add("rawOutput", "true")
@@ -53,13 +62,22 @@ func (c *Client) SendDeviceCommand(deviceName, command string, wait bool, rawOut
 }
 
 // SendDeviceCommandWithAuth sends a command to a device with credential override
-func (c *Client) SendDeviceCommandWithAuth(deviceName, command, username, password string, wait bool, rawOutput bool, timeout int) (string, error) {
+func (c *Client) SendDeviceCommandWithAuth(deviceName, command, username, password string, wait bool, rawOutput bool, timeout int, useCache bool, cacheTTL *int, cacheRefresh bool) (string, error) {
 	apiURL := fmt.Sprintf("%s/api/device/%s/send_command", c.BaseURL, deviceName)
 
 	params := url.Values{}
 	params.Add("command", command)
 	if wait {
 		params.Add("wait", "true")
+		if useCache {
+			params.Add("use_cache", "true")
+		}
+		if cacheTTL != nil {
+			params.Add("cache_ttl", fmt.Sprintf("%d", *cacheTTL))
+		}
+		if cacheRefresh {
+			params.Add("cache_refresh", "true")
+		}
 	}
 	if rawOutput {
 		params.Add("rawOutput", "true")
