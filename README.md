@@ -1,6 +1,6 @@
 # tomclient
 
-A CLI client for the Tom Smykowski network automation broker service.
+A CLI client for the [Tom Smykowski](https://github.com/wrgeorge1983/tom) network automation broker service.
 
 Authenticate with OAuth, API keys, or no auth, then execute commands on network devices or export inventory.
 
