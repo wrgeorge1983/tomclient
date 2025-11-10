@@ -157,10 +157,14 @@ func printHostfileFormat(cfg *auth.Config, devices []string) {
 }
 
 func updateEtcHosts(cfg *auth.Config, devices []string) error {
-	hostsFile := "/etc/hosts"
+	hostsFile := getHostsFilePath() // Use platform-specific function to get hosts file path
 
 	if os.Geteuid() != 0 {
 		return fmt.Errorf("must run as root (sudo) to update /etc/hosts")
+	}
+
+	if err := checkAdminPrivileges(); err != nil { // Use platform-specific function to check admin/sudo privileges
+		return err
 	}
 
 	client := createClient(getAPIURL(cfg), cfg)
