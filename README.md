@@ -4,7 +4,13 @@ A CLI client for the [Tom Smykowski](https://github.com/wrgeorge1983/tom) networ
 
 Authenticate with OAuth, API keys, or no auth, then execute commands on network devices or export inventory.
 
+Works on Linux, macOS, and Windows. On Windows, place `tomclient.exe` somewhere on your `PATH` (or add its folder to `PATH`).
+
 ## Installation
+
+- Download a release binary for Linux, macOS, or Windows and place it on your `PATH`.
+  - Windows: use `tomclient.exe` and add its folder to `PATH`.
+- Or build from source:
 
 ```bash
 go build
@@ -83,10 +89,10 @@ tomclient inventory --refresh
 # Filter by prefix
 tomclient inventory --prefix=router
 
-# Output in /etc/hosts format
+# Output in hosts file format
 tomclient inventory --hostfile
 
-# Update /etc/hosts with device entries (requires sudo)
+# Update hosts file with device entries (requires sudo/Administrator)
 sudo tomclient inventory --update-hosts
 
 # Clear cache
@@ -99,8 +105,8 @@ The inventory cache:
 - Automatically refreshed when expired
 - Used for device name autocomplete
 
-The `/etc/hosts` integration:
-- Creates managed block in `/etc/hosts`
+Hosts file integration:
+- Creates managed block in hosts file (`/etc/hosts` on Linux/macOS, `C:\\Windows\\System32\\drivers\\etc\\hosts` on Windows)
 - Maps device names to IP addresses from inventory
 - Updates are atomic (writes to temp file, then renames)
 - Preserves existing entries outside managed block
@@ -155,22 +161,25 @@ tomclient export --output=json            # Compact JSON
 - `-f, --filter string` - Filter name (optional)
 - `-o, --output string` - Output format: `json` or `pretty` (default: pretty)
 
-### Hosts File Management
+### Hosts File Management (Linux/macOS/Windows)
 
-Automatically populate `/etc/hosts` with device names from inventory:
+Automatically populate your system hosts file with device names from inventory:
 
 ```bash
 # Preview hostfile format
 tomclient inventory --hostfile
 
-# Update /etc/hosts (requires sudo)
+# Update hosts file (requires sudo/Administrator)
 sudo tomclient inventory --update-hosts
+
+# Windows (run terminal as Administrator)
+tomclient inventory --update-hosts
 
 # Update with filtered devices
 sudo tomclient inventory --prefix=prod --update-hosts
 ```
 
-The managed block in `/etc/hosts` looks like:
+The managed block in the hosts file looks like:
 ```
 # BEGIN tomclient managed block
 # This section is automatically managed by tomclient
@@ -186,15 +195,18 @@ The managed block in `/etc/hosts` looks like:
 - Preserves existing entries
 - Clearly marked managed section
 - Can be run repeatedly to update
-- Sudo-aware: automatically uses your config/cache even when run with sudo
+- Linux/macOS: Sudo-aware; uses your config/cache even when run with `sudo`
+- Windows: Run Terminal/PowerShell as Administrator to update `C:\\Windows\\System32\\drivers\\etc\\hosts`
 
-**Note:** When using `sudo`, tomclient automatically detects the original user and uses their config directory (`~/.tom/`), so authentication and cache work seamlessly.
+**Note:**
+- Linux/macOS: When using `sudo`, tomclient detects the original user and uses their config directory (`~/.tom/`), so authentication and cache work seamlessly.
+- Windows: Run as Administrator when updating the hosts file. Config and cache live under `%USERPROFILE%\.tom\`.
 
 ## Configuration
 
 ### Config File (Recommended)
 
-Store settings in `~/.tom/config.json`:
+Store settings in `~/.tom/config.json` (Windows: `%USERPROFILE%\.tom\config.json`):
 
 **Standard OIDC Provider (Duo, Okta, Keycloak, etc.):**
 ```json
@@ -444,6 +456,7 @@ tomclient/
 ## Shell Autocomplete
 
 tomclient provides device name autocomplete for SSH and other commands using cached inventory.
+Currently supports Bash and Zsh. PowerShell completion on Windows is not provided yet.
 
 ### Quick Setup
 
