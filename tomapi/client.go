@@ -1,30 +1,40 @@
 package tomapi
 
 import (
-	"fmt"
 	"net/http"
-
-	"tomclient/auth"
 )
 
-type AuthConfig interface {
-	GetAuthMode() string
-	GetAPIKey() string
-	GetConfigDir() string
-}
-
 type Client struct {
-	BaseURL    string
-	AuthConfig AuthConfig
-	HTTPClient *http.Client
+	BaseURL      string
+	AuthProvider AuthProvider
+	HTTPClient   *http.Client
 }
 
-func NewClient(baseURL string, authConfig AuthConfig) *Client {
-	return &Client{
-		BaseURL:    baseURL,
-		AuthConfig: authConfig,
-		HTTPClient: &http.Client{},
+// NewClient creates a new Tom API client with the given auth provider
+func NewClient(baseURL string, authProvider AuthProvider) *Client {
+	if authProvider == nil {
+		authProvider = &NoAuth{}
 	}
+	return &Client{
+		BaseURL:      baseURL,
+		AuthProvider: authProvider,
+		HTTPClient:   &http.Client{},
+	}
+}
+
+// NewClientWithAPIKey creates a client with API key authentication
+func NewClientWithAPIKey(baseURL, apiKey string) *Client {
+	return NewClient(baseURL, &APIKeyAuth{
+		APIHeader: "X-API-Key",
+		APIKey:    apiKey,
+	})
+}
+
+// NewClientWithToken creates a client with bearer token authentication
+func NewClientWithToken(baseURL, token string) *Client {
+	return NewClient(baseURL, &BearerTokenAuth{
+		Token: token,
+	})
 }
 
 func (c *Client) makeRequest(method, url string) (*http.Response, error) {
@@ -41,69 +51,8 @@ func (c *Client) makeRequest(method, url string) (*http.Response, error) {
 }
 
 func (c *Client) setAuthHeader(req *http.Request) error {
-	if c.AuthConfig == nil {
+	if c.AuthProvider == nil {
 		return nil
 	}
-
-	authMode := c.AuthConfig.GetAuthMode()
-
-	switch authMode {
-	case "none":
-		return nil
-
-	case "api_key":
-		apiKey := c.AuthConfig.GetAPIKey()
-		if apiKey == "" {
-			return fmt.Errorf("auth_mode is 'api_key' but TOM_API_KEY is not set")
-		}
-		req.Header.Set("X-API-Key", apiKey)
-		return nil
-
-	case "jwt":
-		token, err := c.loadJWTToken()
-		if err != nil {
-			return err
-		}
-		// Always use ID token for OIDC-backed auth
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-		return nil
-
-	default:
-		return fmt.Errorf("unknown auth mode: %s", authMode)
-	}
-}
-
-func (c *Client) loadJWTToken() (string, error) {
-	configDir := c.AuthConfig.GetConfigDir()
-
-	t, err := auth.LoadToken(configDir)
-	if err != nil {
-		return "", err
-	}
-
-	// Require an ID token for OIDC
-	if t.IDToken == "" {
-		return "", fmt.Errorf("no id_token present; ensure 'openid' scope and re-authenticate")
-	}
-
-	if t.IsValid() { // validates ID token exp
-		return t.IDToken, nil
-	}
-
-	// Attempt auto-refresh if enabled and we have a refresh token
-	cfg, cfgErr := auth.LoadConfig(configDir)
-	if cfgErr == nil && cfg.OAuthUseRefresh && t.RefreshToken != "" {
-		newTok, rerr := auth.RefreshAccessToken(cfg, t.RefreshToken)
-		if rerr == nil {
-			// Persist tokens (handles rotation)
-			if serr := auth.SaveToken(newTok, cfg.ConfigDir, cfg.OAuthProvider); serr == nil {
-				// Reload and return ID token
-				if latest, lerr := auth.LoadToken(configDir); lerr == nil && latest.IDToken != "" && latest.IsValid() {
-					return latest.IDToken, nil
-				}
-			}
-		}
-	}
-
-	return "", fmt.Errorf("token expired - run 'tomclient auth login' to re-authenticate")
+	return c.AuthProvider.AddAuth(req)
 }

@@ -49,7 +49,8 @@ Features:
 			finalAPIURL = cfg.APIURL
 		}
 
-		client = tomapi.NewClient(finalAPIURL, cfg)
+		authProvider := auth.NewCLIAuthProvider(cfg)
+		client = tomapi.NewClient(finalAPIURL, authProvider)
 	},
 }
 
@@ -80,5 +81,6 @@ func handleError(err error) {
 }
 
 func createClient(apiURL string, cfg *auth.Config) *tomapi.Client {
-	return tomapi.NewClient(apiURL, cfg)
+	authProvider := auth.NewCLIAuthProvider(cfg)
+	return tomapi.NewClient(apiURL, authProvider)
 }

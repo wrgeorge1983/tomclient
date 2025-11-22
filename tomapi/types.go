@@ -4,11 +4,11 @@ import "time"
 
 // JobResponse represents the response from job-based API calls
 type JobResponse struct {
-	ID          string    `json:"id"`
-	Status      string    `json:"status"`
-	Result      string    `json:"result,omitempty"`
-	Error       string    `json:"error,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          string     `json:"id"`
+	Status      string     `json:"status"`
+	Result      string     `json:"result,omitempty"`
+	Error       string     `json:"error,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
 	StartedAt   *time.Time `json:"started_at,omitempty"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 }

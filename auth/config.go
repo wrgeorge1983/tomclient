@@ -23,6 +23,7 @@ type Config struct {
 	APIURL            string   `json:"api_url,omitempty"`
 	AuthMode          AuthMode `json:"auth_mode"`
 	APIKey            string   `json:"api_key,omitempty"`
+	APIKeyHeader      string   `json:"api_key_header,omitempty"`
 	OAuthProvider     string   `json:"oauth_provider,omitempty"`
 	OAuthClientID     string   `json:"oauth_client_id,omitempty"`
 	OAuthClientSecret string   `json:"oauth_client_secret,omitempty"`
@@ -41,6 +42,10 @@ func (c *Config) GetAuthMode() string {
 
 func (c *Config) GetAPIKey() string {
 	return c.APIKey
+}
+
+func (c *Config) GetAPIKeyHeader() string {
+	return c.APIKeyHeader
 }
 
 func (c *Config) GetConfigDir() string {

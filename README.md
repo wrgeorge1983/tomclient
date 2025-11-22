@@ -1,10 +1,22 @@
 # tomclient
 
-A CLI client for the [Tom Smykowski](https://github.com/wrgeorge1983/tom) network automation broker service.
+A CLI client and Go library for the [Tom Smykowski](https://github.com/wrgeorge1983/tom) network automation broker service.
 
 Authenticate with OAuth, API keys, or no auth, then execute commands on network devices or export inventory.
 
 Works on Linux, macOS, and Windows. On Windows, place `tomclient.exe` somewhere on your `PATH` (or add its folder to `PATH`).
+
+## Using as a Library
+
+The `tomapi` package can be imported into other Go projects without pulling in CLI dependencies. See **[LIBRARY.md](LIBRARY.md)** for full documentation and examples.
+
+Quick example:
+```go
+import "github.com/wrgeorge1983/tomclient/tomapi"
+
+client := tomapi.NewClientWithAPIKey("https://tom.example.com", "your-api-key")
+devices, err := client.GetInventory("")
+```
 
 ## Installation
 
@@ -444,10 +456,12 @@ Common errors and solutions:
 
 ```
 tomclient/
-├── auth/              # OAuth/PKCE authentication
+├── auth/              # OAuth/PKCE authentication (CLI-specific)
 ├── cmd/               # CLI commands (auth, device, export)
-├── tomapi/            # Tom API client library
+├── tomapi/            # Tom API client library (importable)
+├── shell/             # Shell completion scripts
 ├── AUTH.md            # Authentication guide
+├── LIBRARY.md         # Library usage guide
 ├── README.md          # This file
 ├── go.mod             # Go dependencies
 └── main.go            # Entry point
