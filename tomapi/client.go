@@ -1,6 +1,9 @@
 package tomapi
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"net/http"
 )
 
@@ -41,6 +44,33 @@ func (c *Client) makeRequest(method, url string) (*http.Response, error) {
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	if err := c.setAuthHeader(req); err != nil {
+		return nil, err
+	}
+
+	return c.HTTPClient.Do(req)
+}
+
+// makeJSONRequest makes an HTTP request with a JSON body
+func (c *Client) makeJSONRequest(method, url string, body interface{}) (*http.Response, error) {
+	var reqBody io.Reader
+	if body != nil {
+		jsonData, err := json.Marshal(body)
+		if err != nil {
+			return nil, err
+		}
+		reqBody = bytes.NewBuffer(jsonData)
+	}
+
+	req, err := http.NewRequest(method, url, reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
 	}
 
 	if err := c.setAuthHeader(req); err != nil {

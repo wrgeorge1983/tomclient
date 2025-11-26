@@ -5,41 +5,29 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 )
 
 // SendDeviceCommand sends a command to a device and returns the result
 func (c *Client) SendDeviceCommand(deviceName, command string, wait bool, rawOutput bool, useCache bool, cacheTTL *int, cacheRefresh bool) (string, error) {
 	apiURL := fmt.Sprintf("%s/api/device/%s/send_command", c.BaseURL, deviceName)
 
-	params := url.Values{}
-	params.Add("command", command)
-	if wait {
-		params.Add("wait", "true")
-		if useCache {
-			params.Add("use_cache", "true")
-		}
-		if cacheTTL != nil {
-			params.Add("cache_ttl", fmt.Sprintf("%d", *cacheTTL))
-		}
-		if cacheRefresh {
-			params.Add("cache_refresh", "true")
-		}
-	}
-	if rawOutput {
-		params.Add("rawOutput", "true")
+	reqBody := SendCommandRequest{
+		Command:      command,
+		Wait:         wait,
+		UseCache:     useCache,
+		CacheTTL:     cacheTTL,
+		CacheRefresh: cacheRefresh,
 	}
 
-	fullURL := apiURL + "?" + params.Encode()
-
-	resp, err := c.makeRequest("GET", fullURL)
+	resp, err := c.makeJSONRequest("POST", apiURL, reqBody)
 	if err != nil {
 		return "", fmt.Errorf("failed to make request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API returned status code: %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("API returned status code: %d - %s", resp.StatusCode, string(body))
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -47,15 +35,37 @@ func (c *Client) SendDeviceCommand(deviceName, command string, wait bool, rawOut
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}
 
-	// If rawOutput is enabled and wait is true, response should be a JSON string
+	// If rawOutput is enabled and wait is true, extract the command output from the response
 	if rawOutput && wait {
-		var result string
-		err = json.Unmarshal(body, &result)
-		if err != nil {
-			// If JSON parsing fails, return raw body
-			return string(body), nil
-		}
+		return extractCommandOutput(body, command)
+	}
+
+	return string(body), nil
+}
+
+// extractCommandOutput extracts raw command output from a JobResponse
+func extractCommandOutput(body []byte, command string) (string, error) {
+	// First try to parse as a simple string (direct raw output)
+	var result string
+	if err := json.Unmarshal(body, &result); err == nil {
 		return result, nil
+	}
+
+	// Try to parse as a JobResponse with command_data
+	var jobResp struct {
+		Result interface{} `json:"result"`
+	}
+	if err := json.Unmarshal(body, &jobResp); err != nil {
+		return string(body), nil
+	}
+
+	// Check if result contains command data
+	if resultMap, ok := jobResp.Result.(map[string]interface{}); ok {
+		if data, ok := resultMap["data"].(map[string]interface{}); ok {
+			if output, ok := data[command].(string); ok {
+				return output, nil
+			}
+		}
 	}
 
 	return string(body), nil
@@ -65,43 +75,31 @@ func (c *Client) SendDeviceCommand(deviceName, command string, wait bool, rawOut
 func (c *Client) SendDeviceCommandWithAuth(deviceName, command, username, password string, wait bool, rawOutput bool, timeout int, useCache bool, cacheTTL *int, cacheRefresh bool) (string, error) {
 	apiURL := fmt.Sprintf("%s/api/device/%s/send_command", c.BaseURL, deviceName)
 
-	params := url.Values{}
-	params.Add("command", command)
-	if wait {
-		params.Add("wait", "true")
-		if useCache {
-			params.Add("use_cache", "true")
-		}
-		if cacheTTL != nil {
-			params.Add("cache_ttl", fmt.Sprintf("%d", *cacheTTL))
-		}
-		if cacheRefresh {
-			params.Add("cache_refresh", "true")
-		}
+	reqBody := SendCommandRequest{
+		Command:      command,
+		Wait:         wait,
+		Timeout:      timeout,
+		UseCache:     useCache,
+		CacheTTL:     cacheTTL,
+		CacheRefresh: cacheRefresh,
 	}
-	if rawOutput {
-		params.Add("rawOutput", "true")
-	}
+
 	if username != "" {
-		params.Add("username", username)
+		reqBody.Username = &username
 	}
 	if password != "" {
-		params.Add("password", password)
-	}
-	if timeout > 0 {
-		params.Add("timeout", fmt.Sprintf("%d", timeout))
+		reqBody.Password = &password
 	}
 
-	fullURL := apiURL + "?" + params.Encode()
-
-	resp, err := c.makeRequest("GET", fullURL)
+	resp, err := c.makeJSONRequest("POST", apiURL, reqBody)
 	if err != nil {
 		return "", fmt.Errorf("failed to make request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API returned status code: %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("API returned status code: %d - %s", resp.StatusCode, string(body))
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -110,12 +108,7 @@ func (c *Client) SendDeviceCommandWithAuth(deviceName, command, username, passwo
 	}
 
 	if rawOutput && wait {
-		var result string
-		err = json.Unmarshal(body, &result)
-		if err != nil {
-			return string(body), nil
-		}
-		return result, nil
+		return extractCommandOutput(body, command)
 	}
 
 	return string(body), nil
