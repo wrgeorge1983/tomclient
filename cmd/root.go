@@ -13,7 +13,7 @@ var (
 	apiURL    string
 	configDir string
 	client    *tomapi.Client
-	Version   = "2.0.0"
+	Version   = "2.1.0"
 )
 
 var rootCmd = &cobra.Command{
