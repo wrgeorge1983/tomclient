@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -16,6 +17,7 @@ var (
 	inventoryPrefix    string
 	inventoryHostfile  bool
 	inventoryUpdateEtc bool
+	inventoryDetails   bool
 )
 
 var inventoryCmd = &cobra.Command{
@@ -28,6 +30,7 @@ Used for shell autocomplete and quick device name lookups.`,
 	Example: `  tomclient inventory                    # List all cached devices
   tomclient inventory --refresh          # Force refresh from API
   tomclient inventory --prefix=router    # Filter devices by prefix
+  tomclient inventory --details          # Show full JSON details for each device
   tomclient inventory --hostfile         # Output in /etc/hosts format
   sudo tomclient inventory --update-hosts # Update /etc/hosts with all devices`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -81,6 +84,11 @@ Used for shell autocomplete and quick device name lookups.`,
 
 		if inventoryHostfile {
 			printHostfileFormat(cfg, devices)
+			return nil
+		}
+
+		if inventoryDetails {
+			printDetailsFormat(cfg, devices)
 			return nil
 		}
 
@@ -154,6 +162,30 @@ func printHostfileFormat(cfg *auth.Config, devices []string) {
 			fmt.Printf("%s\t%s\n", config.Host, device)
 		}
 	}
+}
+
+func printDetailsFormat(cfg *auth.Config, devices []string) {
+	client := createClient(getAPIURL(cfg), cfg)
+	inventory, err := client.ExportInventory("")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: failed to fetch inventory details: %v\n", err)
+		return
+	}
+
+	output := make(map[string]interface{})
+	for _, device := range devices {
+		if config, ok := inventory[device]; ok {
+			output[device] = config
+		}
+	}
+
+	jsonBytes, err := json.MarshalIndent(output, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: failed to marshal JSON: %v\n", err)
+		return
+	}
+
+	fmt.Println(string(jsonBytes))
 }
 
 func updateEtcHosts(cfg *auth.Config, devices []string) error {
@@ -253,6 +285,7 @@ func init() {
 
 	inventoryCmd.Flags().BoolVarP(&inventoryRefresh, "refresh", "r", false, "Force refresh from API")
 	inventoryCmd.Flags().StringVarP(&inventoryPrefix, "prefix", "p", "", "Filter devices by prefix")
+	inventoryCmd.Flags().BoolVarP(&inventoryDetails, "details", "d", false, "Show full JSON details for each device")
 	inventoryCmd.Flags().BoolVar(&inventoryHostfile, "hostfile", false, "Output in /etc/hosts format")
 	inventoryCmd.Flags().BoolVar(&inventoryUpdateEtc, "update-hosts", false, "Update /etc/hosts file (requires sudo)")
 }
