@@ -98,6 +98,42 @@ func (c *Client) GetDeviceConfig(deviceName string) (*DeviceConfig, error) {
 	return &config, nil
 }
 
+// ExportInventoryWithFilters exports inventory with inline field filters
+func (c *Client) ExportInventoryWithFilters(filters map[string]string) (map[string]DeviceConfig, error) {
+	apiURL := c.BaseURL + "/api/inventory/export"
+
+	if len(filters) > 0 {
+		params := url.Values{}
+		for field, pattern := range filters {
+			params.Add(field, pattern)
+		}
+		apiURL += "?" + params.Encode()
+	}
+
+	resp, err := c.makeRequest("GET", apiURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status code: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	var inventory map[string]DeviceConfig
+	err = json.Unmarshal(body, &inventory)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JSON: %w", err)
+	}
+
+	return inventory, nil
+}
+
 // ListFilters gets available inventory filters
 func (c *Client) ListFilters() (map[string]string, error) {
 	apiURL := c.BaseURL + "/api/inventory/filters"
