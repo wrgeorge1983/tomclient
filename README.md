@@ -30,7 +30,7 @@ go build
 
 ## Quick Start
 
-### With No Authentication
+### With No Authentication (scary!)
 
 ```bash
 export TOM_API_URL=http://localhost:8020
@@ -51,39 +51,7 @@ tomclient device router1 "show version"
 
 ### With OAuth
 
-**Using config.json (recommended):**
-```bash
-# Create ~/.tom/config.json
-cat > ~/.tom/config.json << EOF
-{
-  "api_url": "http://localhost:8020",
-  "auth_mode": "jwt",
-  "oauth_provider": "google",
-  "oauth_client_id": "xxx.apps.googleusercontent.com",
-  "oauth_client_secret": "GOCSPX-xxxxx",
-  "oauth_discovery_url": "https://accounts.google.com/.well-known/openid-configuration"
-}
-EOF
-
-# Authenticate (opens browser)
-tomclient auth login
-
-# Run commands
-tomclient device router1 "show version"
-```
-
-**Or using environment variables:**
-```bash
-export TOM_API_URL=http://localhost:8020
-export TOM_AUTH_MODE=jwt
-export TOM_OAUTH_PROVIDER=google
-export TOM_OAUTH_CLIENT_ID=xxx.apps.googleusercontent.com
-export TOM_OAUTH_CLIENT_SECRET=GOCSPX-xxxxx
-export TOM_OAUTH_DISCOVERY_URL=https://accounts.google.com/.well-known/openid-configuration
-
-tomclient auth login
-tomclient device router1 "show version"
-```
+See [Authentication Modes - OAuth (JWT)](#oauth-jwt) below.
 
 ## Commands
 
@@ -123,10 +91,10 @@ Hosts file integration:
 - Updates are atomic (writes to temp file, then renames)
 - Preserves existing entries outside managed block
 
-### Authentication
+### Authentication (when using oAuth)
 
 ```bash
-# Login with OAuth
+# Login with oAuth
 tomclient auth login
 
 # Check authentication status
