@@ -173,7 +173,7 @@ func queryDevice(device string, re *regexp.Regexp) grepResult {
 		command = "show running-config"
 	}
 
-	output, err := client.SendDeviceCommand(device, command, true, true, !grepNoCache, nil, false)
+	output, err := client.SendDeviceCommand(device, command, true, true, 0, !grepNoCache, nil, false)
 	if err != nil {
 		return grepResult{Device: device, Error: err}
 	}

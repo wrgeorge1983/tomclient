@@ -8,12 +8,13 @@ import (
 )
 
 // SendDeviceCommand sends a command to a device and returns the result
-func (c *Client) SendDeviceCommand(deviceName, command string, wait bool, rawOutput bool, useCache bool, cacheTTL *int, cacheRefresh bool) (string, error) {
+func (c *Client) SendDeviceCommand(deviceName, command string, wait bool, rawOutput bool, timeout int, useCache bool, cacheTTL *int, cacheRefresh bool) (string, error) {
 	apiURL := fmt.Sprintf("%s/api/device/%s/send_command", c.BaseURL, deviceName)
 
 	reqBody := SendCommandRequest{
 		Command:      command,
 		Wait:         wait,
+		Timeout:      timeout,
 		UseCache:     useCache,
 		CacheTTL:     cacheTTL,
 		CacheRefresh: cacheRefresh,

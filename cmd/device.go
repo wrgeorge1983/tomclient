@@ -78,7 +78,7 @@ Supports credential override and timeout configuration.`,
 				useCache, cacheTTL, deviceCacheRefresh,
 			)
 		} else {
-			result, err = client.SendDeviceCommand(deviceName, command, deviceWait, deviceRaw,
+			result, err = client.SendDeviceCommand(deviceName, command, deviceWait, deviceRaw, deviceTimeout,
 				useCache, cacheTTL, deviceCacheRefresh)
 		}
 

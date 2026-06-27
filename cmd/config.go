@@ -104,7 +104,7 @@ var configShowCmd = &cobra.Command{
 		if currentProfile != "" {
 			fmt.Printf("Active profile: %s\n\n", currentProfile)
 		} else {
-			fmt.Println("No profile active (using config.json directly)\n")
+			fmt.Print("No profile active (using config.json directly)\n\n")
 		}
 
 		// Marshal and display the config
